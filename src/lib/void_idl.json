@@ -1,0 +1,2521 @@
+{
+  "address": "7XG5Q5W4fosDhJXr6NXgNphhEKqMYrUWG6WDnn4xg3dj",
+  "metadata": {
+    "name": "void",
+    "version": "0.1.0",
+    "spec": "0.1.0"
+  },
+  "instructions": [
+    {
+      "name": "burn_xnt",
+      "docs": [
+        "3. Burn XNT \u2192 earn pending NEX (1:1 + VOLT burn boost)"
+      ],
+      "discriminator": [
+        205,
+        179,
+        75,
+        101,
+        13,
+        149,
+        38,
+        127
+      ],
+      "accounts": [
+        {
+          "name": "protocol_state",
+          "writable": true
+        },
+        {
+          "name": "user_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  117,
+                  115,
+                  101,
+                  114,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "user"
+              }
+            ]
+          }
+        },
+        {
+          "name": "burn_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  117,
+                  114,
+                  110,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "claim_nex",
+      "docs": [
+        "4. Claim pending NEX"
+      ],
+      "discriminator": [
+        143,
+        193,
+        142,
+        129,
+        244,
+        71,
+        248,
+        180
+      ],
+      "accounts": [
+        {
+          "name": "user_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  117,
+                  115,
+                  101,
+                  114,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "user"
+              }
+            ]
+          }
+        },
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "mint_nex_tap",
+      "docs": [
+        "4b. Tap to mint NEX \u2014 1 tap = 100,000 NEX"
+      ],
+      "discriminator": [
+        110,
+        22,
+        204,
+        178,
+        216,
+        194,
+        96,
+        44
+      ],
+      "accounts": [
+        {
+          "name": "protocol_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  116,
+                  111,
+                  99,
+                  111,
+                  108,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "user_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  117,
+                  115,
+                  101,
+                  114,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "user"
+              }
+            ]
+          }
+        },
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "claim_vault_reward",
+      "docs": [
+        "13. Claim vault reward"
+      ],
+      "discriminator": [
+        80,
+        2,
+        39,
+        115,
+        76,
+        142,
+        218,
+        62
+      ],
+      "accounts": [
+        {
+          "name": "protocol_state",
+          "writable": true
+        },
+        {
+          "name": "user_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  117,
+                  115,
+                  101,
+                  114,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "user"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault_record",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  115,
+                  104,
+                  97,
+                  114,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "user"
+              }
+            ]
+          }
+        },
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "consume_prestige_medals",
+      "docs": [
+        "15. Consume old prestige medals"
+      ],
+      "discriminator": [
+        67,
+        210,
+        190,
+        24,
+        99,
+        213,
+        194,
+        76
+      ],
+      "accounts": [
+        {
+          "name": "user_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  117,
+                  115,
+                  101,
+                  114,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "user"
+              }
+            ]
+          }
+        },
+        {
+          "name": "target_medal",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  101,
+                  115,
+                  116,
+                  105,
+                  103,
+                  101,
+                  95,
+                  109,
+                  101,
+                  100,
+                  97,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "user"
+              },
+              {
+                "kind": "account",
+                "path": "user_state.prestige_count",
+                "account": "UserState"
+              }
+            ]
+          }
+        },
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "count",
+          "type": "u64"
+        },
+        {
+          "name": "_source_count",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "cosmetic_upgrade",
+      "docs": [
+        "14. Cosmetic upgrade"
+      ],
+      "discriminator": [
+        168,
+        205,
+        177,
+        200,
+        5,
+        251,
+        154,
+        173
+      ],
+      "accounts": [
+        {
+          "name": "protocol_state",
+          "writable": true
+        },
+        {
+          "name": "user_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  117,
+                  115,
+                  101,
+                  114,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "user"
+              }
+            ]
+          }
+        },
+        {
+          "name": "dev_wallet",
+          "writable": true,
+          "address": "BQLB3NPHGRfibY23qTDbEYBuhZu2KsdiD3pbxuu8Fpxh"
+        },
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "upgrade_kind",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "init_protocol",
+      "docs": [
+        "1. Initialize protocol"
+      ],
+      "discriminator": [
+        3,
+        188,
+        141,
+        237,
+        225,
+        226,
+        232,
+        210
+      ],
+      "accounts": [
+        {
+          "name": "protocol_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  116,
+                  111,
+                  99,
+                  111,
+                  108,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "dev_wallet",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "init_user",
+      "docs": [
+        "2. Initialize user state"
+      ],
+      "discriminator": [
+        14,
+        51,
+        68,
+        159,
+        237,
+        78,
+        158,
+        102
+      ],
+      "accounts": [
+        {
+          "name": "user_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  117,
+                  115,
+                  101,
+                  114,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "user"
+              }
+            ]
+          }
+        },
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "mint_bronze",
+      "docs": [
+        "5. Mint Bronze (V2 \u2014 soulbound tier tracking)",
+        "No ATA needed \u2014 stored directly in UserState.tier_counts",
+        "No prerequisite chain \u2014 anyone can mint any bronze",
+        "Except PRIME (token 8) requires \u22651 of each other 9 tokens"
+      ],
+      "discriminator": [
+        98,
+        125,
+        255,
+        97,
+        194,
+        118,
+        241,
+        193
+      ],
+      "accounts": [
+        {
+          "name": "protocol_state",
+          "writable": true
+        },
+        {
+          "name": "user_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  117,
+                  115,
+                  101,
+                  114,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "user"
+              }
+            ]
+          }
+        },
+        {
+          "name": "dev_wallet",
+          "writable": true,
+          "address": "BQLB3NPHGRfibY23qTDbEYBuhZu2KsdiD3pbxuu8Fpxh"
+        },
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "token_index",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "pair_tokens",
+      "docs": [
+        "11. Pair two child tokens"
+      ],
+      "discriminator": [
+        142,
+        131,
+        59,
+        141,
+        221,
+        43,
+        219,
+        199
+      ],
+      "accounts": [
+        {
+          "name": "protocol_state",
+          "writable": true
+        },
+        {
+          "name": "user_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  117,
+                  115,
+                  101,
+                  114,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "user"
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_pair",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  111,
+                  107,
+                  101,
+                  110,
+                  95,
+                  112,
+                  97,
+                  105,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "user"
+              },
+              {
+                "kind": "arg",
+                "path": "a_idx"
+              },
+              {
+                "kind": "arg",
+                "path": "b_idx"
+              }
+            ]
+          }
+        },
+        {
+          "name": "child_token_a"
+        },
+        {
+          "name": "child_token_b"
+        },
+        {
+          "name": "dev_wallet",
+          "writable": true,
+          "address": "BQLB3NPHGRfibY23qTDbEYBuhZu2KsdiD3pbxuu8Fpxh"
+        },
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "a_idx",
+          "type": "u8"
+        },
+        {
+          "name": "b_idx",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "prestige",
+      "docs": [
+        "10. Prestige \u2014 consume all tokens to mint a medal"
+      ],
+      "discriminator": [
+        165,
+        199,
+        34,
+        149,
+        7,
+        36,
+        38,
+        66
+      ],
+      "accounts": [
+        {
+          "name": "protocol_state",
+          "writable": true
+        },
+        {
+          "name": "user_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  117,
+                  115,
+                  101,
+                  114,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "user"
+              }
+            ]
+          }
+        },
+        {
+          "name": "prestige_medal",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  101,
+                  115,
+                  116,
+                  105,
+                  103,
+                  101,
+                  95,
+                  109,
+                  101,
+                  100,
+                  97,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "user"
+              },
+              {
+                "kind": "account",
+                "path": "user_state.prestige_count",
+                "account": "UserState"
+              }
+            ]
+          }
+        },
+        {
+          "name": "dev_wallet",
+          "writable": true,
+          "address": "BQLB3NPHGRfibY23qTDbEYBuhZu2KsdiD3pbxuu8Fpxh"
+        },
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "set_burn_boost_slider",
+      "docs": [
+        "7. Set burn boost slider (1-5x)"
+      ],
+      "discriminator": [
+        150,
+        69,
+        171,
+        237,
+        78,
+        155,
+        4,
+        147
+      ],
+      "accounts": [
+        {
+          "name": "protocol_state",
+          "writable": true
+        },
+        {
+          "name": "user_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  117,
+                  115,
+                  101,
+                  114,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "user"
+              }
+            ]
+          }
+        },
+        {
+          "name": "dev_wallet",
+          "writable": true,
+          "address": "BQLB3NPHGRfibY23qTDbEYBuhZu2KsdiD3pbxuu8Fpxh"
+        },
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "mult",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "set_dev_fee",
+      "docs": [
+        "17. Set dev fee (authority only)"
+      ],
+      "discriminator": [
+        94,
+        243,
+        39,
+        111,
+        187,
+        92,
+        59,
+        110
+      ],
+      "accounts": [
+        {
+          "name": "protocol_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  116,
+                  111,
+                  99,
+                  111,
+                  108,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "fee_index",
+          "type": "u8"
+        },
+        {
+          "name": "new_bps",
+          "type": "u16"
+        }
+      ]
+    },
+    {
+      "name": "set_token_price",
+      "docs": [
+        "16. Set token price (authority only)"
+      ],
+      "discriminator": [
+        166,
+        216,
+        142,
+        197,
+        200,
+        225,
+        253,
+        233
+      ],
+      "accounts": [
+        {
+          "name": "protocol_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  116,
+                  111,
+                  99,
+                  111,
+                  108,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "index",
+          "type": "u8"
+        },
+        {
+          "name": "new_price",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "stake_ash",
+      "docs": [
+        "8. Stake VOLT"
+      ],
+      "discriminator": [
+        125,
+        7,
+        18,
+        20,
+        11,
+        56,
+        85,
+        128
+      ],
+      "accounts": [
+        {
+          "name": "protocol_state",
+          "writable": true
+        },
+        {
+          "name": "user_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  117,
+                  115,
+                  101,
+                  114,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "user"
+              }
+            ]
+          }
+        },
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "tick_production",
+      "docs": [
+        "12. Tick production \u2014 accumulate tidal energy + forced burn tax \u2192 VOLT"
+      ],
+      "discriminator": [
+        78,
+        135,
+        124,
+        91,
+        71,
+        232,
+        45,
+        102
+      ],
+      "accounts": [
+        {
+          "name": "protocol_state",
+          "writable": true
+        },
+        {
+          "name": "user_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  117,
+                  115,
+                  101,
+                  114,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "user"
+              }
+            ]
+          }
+        },
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "unstake_ash",
+      "docs": [
+        "9. Unstake VOLT"
+      ],
+      "discriminator": [
+        124,
+        103,
+        60,
+        47,
+        124,
+        82,
+        8,
+        177
+      ],
+      "accounts": [
+        {
+          "name": "protocol_state",
+          "writable": true
+        },
+        {
+          "name": "user_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  117,
+                  115,
+                  101,
+                  114,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "user"
+              }
+            ]
+          }
+        },
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "upgrade_tier",
+      "docs": [
+        "6. Upgrade tier: 3x same tier + additional NEX \u2192 1x next tier",
+        "Bronze(0) \u2192 Silver(1) \u2192 Gold(2) \u2192 Diamond(3)"
+      ],
+      "discriminator": [
+        122,
+        56,
+        170,
+        60,
+        252,
+        234,
+        190,
+        51
+      ],
+      "accounts": [
+        {
+          "name": "protocol_state",
+          "writable": true
+        },
+        {
+          "name": "user_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  117,
+                  115,
+                  101,
+                  114,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "user"
+              }
+            ]
+          }
+        },
+        {
+          "name": "dev_wallet",
+          "writable": true,
+          "address": "BQLB3NPHGRfibY23qTDbEYBuhZu2KsdiD3pbxuu8Fpxh"
+        },
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "token_index",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "burn_inft_tokens",
+      "discriminator": [
+        155,
+        96,
+        227,
+        213,
+        157,
+        167,
+        148,
+        32
+      ],
+      "accounts": [
+        {
+          "name": "user_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  117,
+                  115,
+                  101,
+                  114,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "user"
+              }
+            ]
+          }
+        },
+        {
+          "name": "prestige_nft_mint",
+          "writable": true
+        },
+        {
+          "name": "user_prestige_nft_ata",
+          "writable": true
+        },
+        {
+          "name": "burn_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  117,
+                  114,
+                  110,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "prestige_number",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "mint_prestige_nft",
+      "discriminator": [
+        93,
+        162,
+        167,
+        133,
+        175,
+        205,
+        15,
+        191
+      ],
+      "accounts": [
+        {
+          "name": "user_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  117,
+                  115,
+                  101,
+                  114,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "user"
+              }
+            ]
+          }
+        },
+        {
+          "name": "prestige_nft_mint",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  101,
+                  115,
+                  116,
+                  105,
+                  103,
+                  101,
+                  95,
+                  110,
+                  102,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "user"
+              },
+              {
+                "kind": "account",
+                "path": "user_state.prestige_count",
+                "account": "UserState"
+              }
+            ]
+          }
+        },
+        {
+          "name": "user_prestige_nft_ata",
+          "writable": true
+        },
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+        },
+        {
+          "name": "associated_token_program",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xr25ix9fJhC1RzU3T"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    }
+  ],
+  "accounts": [
+    {
+      "name": "ChildToken",
+      "discriminator": [
+        68,
+        185,
+        153,
+        8,
+        130,
+        139,
+        5,
+        184
+      ]
+    },
+    {
+      "name": "PrestigeMedal",
+      "discriminator": [
+        175,
+        128,
+        106,
+        83,
+        19,
+        95,
+        217,
+        204
+      ]
+    },
+    {
+      "name": "ProtocolState",
+      "discriminator": [
+        33,
+        51,
+        173,
+        134,
+        35,
+        140,
+        195,
+        248
+      ]
+    },
+    {
+      "name": "TokenPair",
+      "discriminator": [
+        17,
+        214,
+        45,
+        176,
+        229,
+        149,
+        197,
+        71
+      ]
+    },
+    {
+      "name": "UserState",
+      "discriminator": [
+        72,
+        177,
+        85,
+        249,
+        76,
+        167,
+        186,
+        126
+      ]
+    },
+    {
+      "name": "VaultRecord",
+      "discriminator": [
+        47,
+        1,
+        218,
+        116,
+        82,
+        70,
+        124,
+        119
+      ]
+    },
+    {
+      "name": "PrestigeSupply",
+      "discriminator": [
+        27,
+        123,
+        6,
+        111,
+        155,
+        88,
+        241,
+        70
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "AshStakeEvent",
+      "discriminator": [
+        46,
+        16,
+        35,
+        103,
+        44,
+        216,
+        53,
+        97
+      ]
+    },
+    {
+      "name": "BurnEvent",
+      "discriminator": [
+        33,
+        89,
+        47,
+        117,
+        82,
+        124,
+        238,
+        250
+      ]
+    },
+    {
+      "name": "BurnSliderEvent",
+      "discriminator": [
+        129,
+        238,
+        161,
+        2,
+        205,
+        126,
+        212,
+        55
+      ]
+    },
+    {
+      "name": "ChildTokenMintEvent",
+      "discriminator": [
+        139,
+        123,
+        149,
+        15,
+        219,
+        55,
+        239,
+        64
+      ]
+    },
+    {
+      "name": "ClaimEvent",
+      "discriminator": [
+        93,
+        15,
+        70,
+        170,
+        48,
+        140,
+        212,
+        219
+      ]
+    },
+    {
+      "name": "CosmeticUpgradeEvent",
+      "discriminator": [
+        77,
+        129,
+        250,
+        117,
+        1,
+        188,
+        114,
+        250
+      ]
+    },
+    {
+      "name": "MedalsConsumedEvent",
+      "discriminator": [
+        49,
+        104,
+        124,
+        225,
+        200,
+        116,
+        165,
+        38
+      ]
+    },
+    {
+      "name": "PairEvent",
+      "discriminator": [
+        44,
+        90,
+        84,
+        69,
+        45,
+        101,
+        184,
+        154
+      ]
+    },
+    {
+      "name": "PrestigeEvent",
+      "discriminator": [
+        32,
+        226,
+        75,
+        172,
+        3,
+        113,
+        59,
+        232
+      ]
+    },
+    {
+      "name": "TickEvent",
+      "discriminator": [
+        180,
+        6,
+        239,
+        72,
+        112,
+        13,
+        39,
+        219
+      ]
+    },
+    {
+      "name": "TierUpgradeEvent",
+      "discriminator": [
+        25,
+        131,
+        86,
+        164,
+        15,
+        77,
+        84,
+        202
+      ]
+    },
+    {
+      "name": "VaultClaimEvent",
+      "discriminator": [
+        135,
+        55,
+        213,
+        170,
+        157,
+        213,
+        117,
+        117
+      ]
+    },
+    {
+      "name": "TapMintEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "minted",
+            "type": "u64"
+          },
+          {
+            "name": "new_balance",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "BurnInftEvent",
+      "discriminator": [
+        211,
+        47,
+        125,
+        92,
+        183,
+        196,
+        103,
+        199
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "prestige_number",
+            "type": "u64"
+          },
+          {
+            "name": "token_index",
+            "type": "u8"
+          }
+        ]
+      }
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "ZeroAmount",
+      "msg": "Amount must be greater than zero"
+    },
+    {
+      "code": 6001,
+      "name": "InsufficientNex",
+      "msg": "Insufficient NEX balance"
+    },
+    {
+      "code": 6002,
+      "name": "InsufficientXnt",
+      "msg": "Insufficient XNT balance"
+    },
+    {
+      "code": 6003,
+      "name": "InvalidTokenIndex",
+      "msg": "Invalid token index (0-8)"
+    },
+    {
+      "code": 6004,
+      "name": "InvalidTier",
+      "msg": "Invalid tier index (0-3)"
+    },
+    {
+      "code": 6005,
+      "name": "MissingPrerequisite",
+      "msg": "Missing prerequisite \u2014 must hold previous token"
+    },
+    {
+      "code": 6006,
+      "name": "NothingToClaim",
+      "msg": "No pending NEX to claim"
+    },
+    {
+      "code": 6007,
+      "name": "NotAllTokensActive",
+      "msg": "Not all 9 child tokens active"
+    },
+    {
+      "code": 6008,
+      "name": "InsufficientNexEarned",
+      "msg": "Total NEX earned too low for prestige"
+    },
+    {
+      "code": 6009,
+      "name": "NoPrestigeMedal",
+      "msg": "No prestige medal found"
+    },
+    {
+      "code": 6010,
+      "name": "ChildTokenNotFound",
+      "msg": "Child token not found"
+    },
+    {
+      "code": 6011,
+      "name": "TokenNotActive",
+      "msg": "Child token not active"
+    },
+    {
+      "code": 6012,
+      "name": "SameToken",
+      "msg": "Same token cannot pair with itself"
+    },
+    {
+      "code": 6013,
+      "name": "PairAlreadyExists",
+      "msg": "Token pair already exists"
+    },
+    {
+      "code": 6014,
+      "name": "Overflow",
+      "msg": "Arithmetic overflow"
+    },
+    {
+      "code": 6015,
+      "name": "Unauthorized",
+      "msg": "Authorized call only"
+    },
+    {
+      "code": 6016,
+      "name": "InvalidFeeIndex",
+      "msg": "Fee index out of bounds (0-4)"
+    },
+    {
+      "code": 6017,
+      "name": "MaxPrestigeReached",
+      "msg": "Max prestige (100) already reached"
+    },
+    {
+      "code": 6018,
+      "name": "FeeTooHigh",
+      "msg": "Fee exceeds maximum (1000 bps = 10%)"
+    },
+    {
+      "code": 6019,
+      "name": "NoVaultReward",
+      "msg": "Nothing to claim from vault"
+    },
+    {
+      "code": 6020,
+      "name": "AlreadyClaimedEpoch",
+      "msg": "Already claimed this epoch"
+    },
+    {
+      "code": 6021,
+      "name": "InvalidSlider",
+      "msg": "Burn boost slider must be 1-5"
+    },
+    {
+      "code": 6022,
+      "name": "InsufficientTierCount",
+      "msg": "Need at least 3 of current tier to upgrade"
+    },
+    {
+      "code": 6023,
+      "name": "MaxTierCount",
+      "msg": "Tier u8 max (255) reached"
+    },
+    {
+      "code": 6024,
+      "name": "InsufficientAsh",
+      "msg": "Insufficient VOLT balance"
+    },
+    {
+      "code": 6025,
+      "name": "InsufficientStakedAsh",
+      "msg": "Insufficient staked VOLT"
+    },
+    {
+      "code": 6026,
+      "name": "PriceOverflow",
+      "msg": "Dynamic cost calculation overflow"
+    }
+  ],
+  "types": [
+    {
+      "name": "AshStakeEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "action",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "BurnEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "xnt_amount",
+            "type": "u64"
+          },
+          {
+            "name": "pending_nex",
+            "type": "u64"
+          },
+          {
+            "name": "total_burned",
+            "type": "u64"
+          },
+          {
+            "name": "ash_boost_mult",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "BurnSliderEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "new_slider",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ChildToken",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "token_index",
+            "type": "u8"
+          },
+          {
+            "name": "minted_at",
+            "type": "i64"
+          },
+          {
+            "name": "is_active",
+            "type": "bool"
+          },
+          {
+            "name": "resource_balance",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ChildTokenMintEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "token_index",
+            "type": "u8"
+          },
+          {
+            "name": "tier",
+            "type": "u8"
+          },
+          {
+            "name": "cost",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ClaimEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "claimed",
+            "type": "u64"
+          },
+          {
+            "name": "new_balance",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CosmeticUpgradeEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "upgrade_kind",
+            "type": "u8"
+          },
+          {
+            "name": "cost",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MedalsConsumedEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "count",
+            "type": "u64"
+          },
+          {
+            "name": "new_absorbed",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PairEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "token_a",
+            "type": "u8"
+          },
+          {
+            "name": "token_b",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PrestigeEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "prestige_count",
+            "type": "u64"
+          },
+          {
+            "name": "threshold",
+            "type": "u64"
+          },
+          {
+            "name": "medal_seed",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "PrestigeMedal",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "prestige_number",
+            "type": "u64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          },
+          {
+            "name": "visual_seed",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "absorbed_count",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ProtocolState",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "dev_wallet",
+            "type": "pubkey"
+          },
+          {
+            "name": "total_xnt_burned",
+            "type": "u64"
+          },
+          {
+            "name": "total_nex_supply",
+            "type": "u64"
+          },
+          {
+            "name": "total_burns",
+            "type": "u64"
+          },
+          {
+            "name": "token_prices",
+            "type": {
+              "array": [
+                "u64",
+                9
+              ]
+            }
+          },
+          {
+            "name": "dev_fee_bps",
+            "type": {
+              "array": [
+                "u16",
+                5
+              ]
+            }
+          },
+          {
+            "name": "vault_treasury_balance",
+            "type": "u64"
+          },
+          {
+            "name": "cosmetic_prices",
+            "type": {
+              "array": [
+                "u64",
+                5
+              ]
+            }
+          },
+          {
+            "name": "ash_total_supply",
+            "type": "u64"
+          },
+          {
+            "name": "burn_tax_baseline_bps",
+            "type": "u16"
+          },
+          {
+            "name": "ash_staking_pool",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TickEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "ticks_elapsed",
+            "type": "i64"
+          },
+          {
+            "name": "active_tokens",
+            "type": "u16"
+          },
+          {
+            "name": "burned_amount",
+            "type": "u64"
+          },
+          {
+            "name": "ash_minted",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TierUpgradeEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "token_index",
+            "type": "u8"
+          },
+          {
+            "name": "from_tier",
+            "type": "u8"
+          },
+          {
+            "name": "to_tier",
+            "type": "u8"
+          },
+          {
+            "name": "cost",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TokenPair",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "token_a",
+            "type": "u8"
+          },
+          {
+            "name": "token_b",
+            "type": "u8"
+          },
+          {
+            "name": "created_at",
+            "type": "i64"
+          },
+          {
+            "name": "is_active",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "UserState",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "total_xnt_burned",
+            "type": "u64"
+          },
+          {
+            "name": "current_nex_balance",
+            "type": "u64"
+          },
+          {
+            "name": "pending_nex",
+            "type": "u64"
+          },
+          {
+            "name": "last_burn_time",
+            "type": "i64"
+          },
+          {
+            "name": "last_claim_time",
+            "type": "i64"
+          },
+          {
+            "name": "multiplier",
+            "type": "u64"
+          },
+          {
+            "name": "burn_count",
+            "type": "u64"
+          },
+          {
+            "name": "total_nex_earned",
+            "type": "u64"
+          },
+          {
+            "name": "has_mint_pass",
+            "type": "bool"
+          },
+          {
+            "name": "prestige_count",
+            "type": "u64"
+          },
+          {
+            "name": "last_tick_time",
+            "type": "i64"
+          },
+          {
+            "name": "tidal_energy_reserve",
+            "type": "u64"
+          },
+          {
+            "name": "active_token_mask",
+            "type": "u16"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "ash_balance",
+            "type": "u64"
+          },
+          {
+            "name": "ash_staked",
+            "type": "u64"
+          },
+          {
+            "name": "tier_counts",
+            "type": {
+              "array": [
+                "u8",
+                36
+              ]
+            }
+          },
+          {
+            "name": "burn_boost_slider",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "VaultClaimEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "epoch",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "VaultRecord",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "last_claim_epoch",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PrestigeSupply",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "prestige_number",
+            "type": "u64"
+          },
+          {
+            "name": "total_minted",
+            "type": "u64"
+          },
+          {
+            "name": "total_burned",
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,713 @@
+"use client";
+import React, { useState, useEffect, useCallback } from "react";
+import { getPrestigeBadgePath, PRESTIGE_NAMES, PRESTIGE_TICKERS } from "@/lib/void";
+
+// ── Core constants ──
+const NEX_PER_TAP = 1000;          // 30 taps = 30,000 NEX = 1 prestige
+const PRESTIGE_COST = 30000;        // NEX cost to prestige (0.1 XNT equiv)
+const MINT_COST = 5000;            // NEX cost to mint an iNFT
+const ENERGY_MAX = 100;
+const ENERGY_REGEN_MS = 1000;       // 1/sec
+
+// ── Prestige milestones (passive unlocks, no decisions) ──
+const MILESTONES: { at: number; label: string; desc: string }[] = [
+  { at: 0, label: "🏁 Starter", desc: "Basic tap & mint" },
+  { at: 5, label: "👑 Streak", desc: "Combo streak → bonus NEX" },
+  { at: 10, label: "⚡ Energy +50", desc: "Max energy 100 → 150" },
+  { at: 20, label: "🔮 Optimizer", desc: "See your best tap multiplier" },
+  { at: 30, label: "🔥 Crown Burst", desc: "Drain all energy for 3× taps" },
+  { at: 50, label: "💎 2× Taps", desc: "Double NEX per tap" },
+  { at: 75, label: "🛡️ Free Prestige", desc: "Prestige costs 0 NEX" },
+  { at: 100, label: "⭐ MAX", desc: "Everything maxed — the peak" },
+];
+
+const ACCENT = "#a78bfa";  // soft violet
+const GOLD = "#fbbf24";
+
+function getEnergyMaxAt(prestige: number): number {
+  if (prestige >= 10) return 150;
+  return ENERGY_MAX;
+}
+
+function getNexMultAt(prestige: number): number {
+  if (prestige >= 50) return 2;
+  return 1;
+}
+
+function getPrestigeCostAt(prestige: number): number {
+  if (prestige >= 75) return 0;
+  return PRESTIGE_COST;
+}
+
+function getNextMilestone(prestige: number): { at: number; label: string } | null {
+  for (const m of MILESTONES) {
+    if (m.at > prestige) return { at: m.at, label: m.label };
+  }
+  return null;
+}
+
+// ── A chill, atmospheric particle background ──
+function ParticleBg() {
+  const particles = React.useMemo(() => {
+    return Array.from({ length: 20 }, (_, i) => ({
+      id: i,
+      x: Math.random() * 100,
+      y: Math.random() * 100,
+      size: 1 + Math.random() * 3,
+      delay: Math.random() * 8,
+      duration: 6 + Math.random() * 6,
+      opacity: 0.08 + Math.random() * 0.15,
+    }));
+  }, []);
+  return (
+    <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
+      {particles.map(p => (
+        <div
+          key={p.id}
+          className="absolute rounded-full animate-float-slow"
+          style={{
+            left: `${p.x}%`,
+            top: `${p.y}%`,
+            width: p.size,
+            height: p.size,
+            background: ACCENT,
+            opacity: p.opacity,
+            animationDelay: `${p.delay}s`,
+            animationDuration: `${p.duration}s`,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+export default function DemoApp() {
+  const [energy, setEnergy] = useState(ENERGY_MAX);
+  const [nex, setNex] = useState(0);
+  const [prestige, setPrestige] = useState(0);
+  const [streak, setStreak] = useState(0);
+  const [lastTap, setLastTap] = useState(0);
+  const [crownBurst, setCrownBurst] = useState(false);
+  const [crownBurstTaps, setCrownBurstTaps] = useState(0);
+  const [tab, setTab] = useState("tap");
+  const [mintedNfts, setMintedNfts] = useState<{prestige: number; seed: number}[]>([]);
+  const [mintCounts, setMintCounts] = useState<Record<number, number>>({});
+  const [floatTexts, setFloatTexts] = useState<{ id: number; text: string; x: number; y: number; color: string }[]>([]);
+  const [totalBurned, setTotalBurned] = useState(0);
+  const [dailyTaps, setDailyTaps] = useState(0);
+  const [dailyReset, setDailyReset] = useState(Date.now());
+  const [tokens, setTokens] = useState<Record<number, number>>({});
+  const [xntDevFeePaid, setXntDevFeePaid] = useState(false);
+  // Tap ripples + life
+  const [ripples, setRipples] = useState<{id: number; x: number; y: number}[]>([]);
+  const [orbPhase, setOrbPhase] = useState(0);      // subtle drift
+  const [orbFlash, setOrbFlash] = useState(0);       // on tap flash
+  const [particles, setParticles] = useState<{id: number; x: number; y: number; dx: number; dy: number}[]>([]);
+  const [squish, setSquish] = useState(0);           // orb squeeze 0=rest
+
+  const maxEnergy = getEnergyMaxAt(prestige);
+  const nexMult = getNexMultAt(prestige);
+  const prestigeCost = getPrestigeCostAt(prestige);
+  const tapsPerPrestige = Math.ceil(prestigeCost / (NEX_PER_TAP * nexMult));
+  const nextMilestone = getNextMilestone(prestige);
+
+  // Energy regen
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setEnergy(prev => Math.min(maxEnergy, prev + 1));
+    }, ENERGY_REGEN_MS);
+    return () => clearInterval(interval);
+  }, [maxEnergy]);
+
+  // Streak timeout
+  useEffect(() => {
+    if (streak === 0) return;
+    const timeout = setTimeout(() => {
+      const now = Date.now();
+      if (now - lastTap > 8000) setStreak(0);
+    }, 8000);
+    return () => clearTimeout(timeout);
+  }, [streak, lastTap]);
+
+  // Daily reset
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = Date.now();
+      if (now - dailyReset > 86400000) { setDailyTaps(0); setDailyReset(now); }
+    }, 60000);
+    return () => clearInterval(interval);
+  }, [dailyReset]);
+
+  // Slow orb shimmer drift
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setOrbPhase(prev => (prev + 1) % 360);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const addFloat = useCallback((text: string, color: string = ACCENT) => {
+    const id = Date.now() + Math.random();
+    setFloatTexts(prev => [...prev, { id, text, x: 40 + Math.random() * 20, y: 30 + Math.random() * 10, color }]);
+    setTimeout(() => setFloatTexts(prev => prev.filter(f => f.id !== id)), 1200);
+  }, []);
+
+  // ── Tap handler ──
+  const handleTap = useCallback((e: React.MouseEvent<HTMLButtonElement>) => {
+    if (energy <= 0) return;
+    setEnergy(prev => prev - 1);
+    const now = Date.now();
+
+    // Ripple at tap point
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 100;
+    const y = ((e.clientY - rect.top) / rect.height) * 100;
+    const rippleId = now + Math.random();
+    setRipples(prev => [...prev, { id: rippleId, x, y }]);
+    setTimeout(() => setRipples(prev => prev.filter(r => r.id !== rippleId)), 600);
+
+    // Streak
+    if (now - lastTap < 8000) {
+      setStreak(prev => prev + 1);
+    } else {
+      setStreak(1);
+    }
+    setLastTap(now);
+
+    // Crown burst
+    if (crownBurst) {
+      setCrownBurstTaps(prev => {
+        const next = prev + 1;
+        if (next >= 10) { setCrownBurst(false); return 0; }
+        return next;
+      });
+    }
+
+    let reward = NEX_PER_TAP * nexMult;
+
+    // Streak bonus (unlocks at prestige 5)
+    if (prestige >= 5 && streak >= 5) {
+      reward = Math.floor(reward * (1 + streak * 0.1));
+    }
+
+    // Crown burst
+    if (crownBurst) {
+      reward = Math.floor(reward * 3);
+    }
+
+    setNex(prev => prev + reward);
+    setTotalBurned(prev => prev + reward);
+    setDailyTaps(prev => prev + 1);
+
+    // Flash the orb + emit micro particles
+    setOrbFlash(1);
+    setTimeout(() => setOrbFlash(0), 200);
+
+    // Emit a few floating particles from the orb
+    for (let i = 0; i < 3; i++) {
+      const pid = now + Math.random() * 1000 + i;
+      const angle = Math.random() * 2 * Math.PI;
+      const dist = 15 + Math.random() * 25;
+      setParticles(prev => [...prev, {
+        id: pid,
+        x: 50 + Math.cos(angle) * 8,
+        y: 50 + Math.sin(angle) * 8,
+        dx: Math.cos(angle) * dist,
+        dy: Math.sin(angle) * dist,
+      }]);
+      setTimeout(() => setParticles(prev => prev.filter(p => p.id !== pid)), 500);
+    }
+
+    addFloat(`+${reward.toLocaleString()} NEX${crownBurst ? " 🔥×3" : streak >= 5 && prestige >= 5 ? ` 👑×${(1 + streak * 0.1).toFixed(1)}` : ""}`, ACCENT);
+  }, [energy, lastTap, crownBurst, prestige, streak, nexMult, addFloat]);
+
+  // ── Activate crown burst (unlocks at prestige 30) ──
+  const triggerCrownBurst = useCallback(() => {
+    if (prestige < 30 || crownBurst) return;
+    if (energy < maxEnergy) return;
+    setCrownBurst(true);
+    setCrownBurstTaps(0);
+    setEnergy(0);
+    addFloat("🔥 CROWN BURST ACTIVE!", "#f97316");
+  }, [prestige, crownBurst, energy, maxEnergy, addFloat]);
+
+  // ── Pay 1 XNT dev fee ──
+  const payXntFee = useCallback(() => {
+    setXntDevFeePaid(true);
+    addFloat("✅ 1 XNT Dev Fee Paid — Game Unlocked!", GOLD);
+  }, [addFloat]);
+
+  // ── Prestige ──
+  const handlePrestige = useCallback(() => {
+    if (nex < prestigeCost) return;
+    if (prestige >= 100) return;
+    setNex(prev => prev - Math.max(1, prestigeCost));
+    setPrestige(prev => prev + 1);
+    setStreak(0);
+    setCrownBurst(false);
+    setCrownBurstTaps(0);
+    setEnergy(getEnergyMaxAt(prestige + 1));
+    addFloat(`🔄 Prestiged! → P${prestige + 1}`, GOLD);
+  }, [nex, prestige, prestigeCost, addFloat]);
+
+  // ── Mint iNFT (costs NEX) ──
+  const mintNft = useCallback(() => {
+    if (nex < MINT_COST || prestige < 1) return;
+    const currentCount = mintCounts[prestige] || 0;
+    if (currentCount >= 10) return;
+    setNex(prev => prev - MINT_COST);
+    setMintedNfts(prev => [...prev, { prestige, seed: Math.floor(Math.random() * 1000000) }]);
+    setMintCounts(prev => ({ ...prev, [prestige]: (prev[prestige] || 0) + 1 }));
+    addFloat(`🎨 Minted P${prestige} iNFT! -${MINT_COST.toLocaleString()} NEX`, ACCENT);
+  }, [nex, prestige, mintCounts, addFloat]);
+
+  // ── Burn iNFT → get the prestige token ──
+  const burnNft = useCallback((prestigeLvl: number, seed: number) => {
+    setMintedNfts(prev => prev.filter(nft => !(nft.prestige === prestigeLvl && nft.seed === seed)));
+    setMintCounts(prev => {
+      const newCounts = { ...prev };
+      newCounts[prestigeLvl] = (newCounts[prestigeLvl] || 0) - 1;
+      if (newCounts[prestigeLvl] <= 0) delete newCounts[prestigeLvl];
+      return newCounts;
+    });
+    setTokens(prev => ({ ...prev, [prestigeLvl]: (prev[prestigeLvl] || 0) + 1 }));
+    const ticker = PRESTIGE_TICKERS[prestigeLvl - 1] ?? "???";
+    addFloat(`🔥 Burned! +1 ${ticker} token`, GOLD);
+  }, [addFloat]);
+
+  // ── Forge 3→1 ──
+  const forgeNfts = useCallback(() => {
+    const counts = mintedNfts.reduce<Record<number, number>>((acc, nft) => {
+      acc[nft.prestige] = (acc[nft.prestige] || 0) + 1;
+      return acc;
+    }, {});
+    const levels = Object.keys(counts).map(Number).sort((a, b) => a - b);
+    for (const lvl of levels) {
+      if (counts[lvl] >= 3) {
+        let toRemove = 3;
+        const remaining: {prestige: number; seed: number}[] = [];
+        for (const nft of mintedNfts) {
+          if (nft.prestige === lvl && toRemove > 0) { toRemove--; continue; }
+          remaining.push(nft);
+        }
+        setMintedNfts(remaining);
+        // Forging does not affect mint counts — those slots stay consumed
+        const newLvl = Math.min(100, lvl + 1);
+        setMintedNfts(prev => [...prev, { prestige: newLvl, seed: Math.floor(Math.random() * 1000000) }]);
+        addFloat(`🔨 Forged! ${lvl}×3 → P${newLvl}`, GOLD);
+        return;
+      }
+    }
+    addFloat("Not enough duplicates to forge", "#6b7280");
+  }, [mintedNfts, addFloat]);
+
+  // ── Tabs ──
+  const bottomTabs = [
+    { key: "tap", label: "👆", title: "Tap" },
+    { key: "mint", label: "🎨", title: "Mint" },
+    { key: "tokens", label: "🪙", title: "Tokens" },
+  ] as const;
+
+  // Compute orb transform outside JSX to avoid `>` parsing issues
+  let orbTransform: string | undefined;
+  if (squish !== 0) {
+    const sx = squish > 0 ? 1 - squish * 0.15 : 1 + squish * -0.06;
+    const sy = squish > 0 ? 1 - squish * 0.10 : 1 + squish * -0.10;
+    orbTransform = `scale(${sx}, ${sy})`;
+  }
+  const orbTransition = squish
+    ? 'transform 0.06s cubic-bezier(.17,.67,.37,1.6)'
+    : 'transform 0.15s cubic-bezier(.17,.67,.37,1.6)';
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-[#0a0a12] via-[#0e0e1a] to-[#12122a] text-white flex flex-col relative">
+      <ParticleBg />
+
+      <div className="flex-1 overflow-y-auto pb-20 relative z-10">
+        {/* ── Floating texts ── */}
+        {floatTexts.map(ft => (
+          <div key={ft.id} className="absolute pointer-events-none animate-float-up text-xs font-bold z-50" style={{ left: `${ft.x}%`, top: `${ft.y}%`, color: ft.color, textShadow: "0 0 12px rgba(0,0,0,0.9)" }}>
+            {ft.text}
+          </div>
+        ))}
+
+        {/* ══════════════════════ TAP TAB ══════════════════════ */}
+        {tab === "tap" && (
+          <div className="px-4 pt-4 space-y-3">
+
+            {/* ── Header stats ── */}
+            <div className="flex items-center justify-center gap-4 text-xs">
+              <span style={{ color: ACCENT }}>💎 {nex.toLocaleString()} NEX</span>
+              <span className="text-gray-400">⚡ {energy}/{maxEnergy}</span>
+              <span className="text-gray-500">P{prestige}</span>
+            </div>
+
+            {/* ── Prestige info bar ── */}
+            <div className="text-center">
+              {prestige >= 100 && <span className="text-yellow-400 text-sm">🏆 MAX PRESTIGE</span>}
+              {nextMilestone && (
+                <p className="text-[10px] text-gray-500">
+                  Next: <span className="text-gray-300">{nextMilestone.label}</span> at P{nextMilestone.at}
+                </p>
+              )}
+              <p className="text-[9px] text-gray-600 mt-1">
+                {prestige === 0 ? "tap to begin your journey" : `prestige ${prestige} / 100`}
+              </p>
+            </div>
+
+            {/* ── Chill orb tap button ── */}
+            <div className="flex justify-center py-4">
+              <button
+                onClick={handleTap}
+                disabled={energy <= 0}
+                className="relative w-44 h-44 select-none touch-none focus:outline-none group"
+              >
+                {/* Outer glow rings */}
+                <div className={`absolute inset-0 rounded-full transition-all duration-700 ${
+                  energy > 0
+                    ? "bg-gradient-to-br from-[#a78bfa]/20 via-[#7c3aed]/10 to-transparent blur-xl animate-pulse-slow"
+                    : "bg-gray-800/20 blur-xl"
+                }`} />
+                <div className={`absolute inset-4 rounded-full transition-all duration-500 ${
+                  energy > 0
+                    ? "bg-gradient-to-br from-[#a78bfa]/15 to-[#7c3aed]/5 blur-md"
+                    : "bg-gray-800/10 blur-md"
+                }`} />
+
+                {/* Second outer ring — slow orbit */}
+                {energy > 0 && (
+                  <div className="absolute inset-0 rounded-full opacity-20 animate-orb-slow pointer-events-none"
+                    style={{
+                      background: 'conic-gradient(from 0deg, transparent, #a78bfa44, transparent, #a78bfa22, transparent)',
+                    }}
+                  />
+                )}
+
+                {/* Tap ripples */}
+                {ripples.map(r => (
+                  <span
+                    key={r.id}
+                    className="absolute rounded-full border border-[#a78bfa]/40 animate-ripple pointer-events-none"
+                    style={{
+                      left: `${r.x}%`,
+                      top: `${r.y}%`,
+                      width: 4,
+                      height: 4,
+                      transform: "translate(-50%, -50%)",
+                    }}
+                  />
+                ))}
+
+                {/* Emitted particles */}
+                {particles.map(p => (
+                  <span
+                    key={p.id}
+                    className="absolute w-1 h-1 rounded-full bg-[#a78bfa]/50 pointer-events-none"
+                    style={{
+                      left: `${p.x}%`,
+                      top: `${p.y}%`,
+                      transition: `all 0.5s cubic-bezier(.17,.67,.37,1)`,
+                      transform: `translate(calc(${p.dx}px - 50%), calc(${p.dy}px - 50%))`,
+                      opacity: 0,
+                    }}
+                  />
+                ))}
+
+                {/* Main orb — with life and squish */}
+                <div className={`relative w-full h-full rounded-full flex flex-col items-center justify-center transition-all duration-150 ${
+                  energy > 0
+                    ? "bg-gradient-to-br from-[#a78bfa]/30 via-[#7c3aed]/20 to-[#2d1b69]/40 border border-[#a78bfa]/20 shadow-lg shadow-[#a78bfa]/10 group-hover:shadow-[#a78bfa]/20 group-hover:border-[#a78bfa]/30"
+                    : "bg-gray-800/20 border border-white/5"
+                }`}
+                  style={{
+                    transform: orbTransform,
+                    boxShadow: orbFlash ? '0 0 40px rgba(167,139,250,0.4), 0 0 80px rgba(124,58,237,0.2)' : undefined,
+                    transition: orbTransition,
+                  } as React.CSSProperties}
+                >
+                  {/* Subtle internal wobble */}
+                  <div className={`absolute inset-0 rounded-full transition-opacity duration-1000 ${
+                    energy > 0 ? 'opacity-60 animate-wobble-slow' : 'opacity-0'
+                  }`}
+                    style={{
+                      background: 'radial-gradient(circle at 40% 35%, rgba(167,139,250,0.12), transparent 70%)',
+                    }}
+                  />
+
+                  <span className={`relative text-3xl mb-1 transition-all duration-200 ${
+                    energy > 0
+                      ? orbFlash ? 'scale-[1.4]' : 'group-hover:scale-110'
+                      : 'opacity-30'
+                  }`}>
+                    {energy > 0 ? "✦" : "💤"}
+                  </span>
+                  <span className={`relative text-sm font-light tracking-widest uppercase transition-colors duration-500 ${
+                    energy > 0
+                      ? orbFlash ? 'text-white' : 'text-[#a78bfa] group-hover:text-[#c4b5fd]'
+                      : 'text-gray-600'
+                  }`}>
+                    {energy > 0 ? "tap" : "resting"}
+                  </span>
+                  <span className={`relative text-[9px] font-light mt-0.5 transition-all duration-300 ${
+                    energy > 0
+                      ? orbFlash ? 'text-white/80' : 'text-[#a78bfa]/60'
+                      : 'text-gray-700'
+                  }`}>
+                    +{NEX_PER_TAP * nexMult} NEX
+                  </span>
+                </div>
+
+                {/* Inner shimmer — drifts slowly */}
+                {energy > 0 && (
+                  <div className="absolute inset-0 rounded-full pointer-events-none overflow-hidden"
+                    style={{
+                      background: `linear-gradient(${120 + orbPhase * 0.5}deg, rgba(255,255,255,0.06) 0%, transparent 40%, transparent 60%, rgba(167,139,250,0.04) 100%)`,
+                      transition: 'background 3s ease',
+                    }}
+                  />
+                )}
+              </button>
+            </div>
+
+            {/* ── Streak bar ── */}
+            {streak >= 2 && (
+              <div className="text-center text-[10px]" style={{ color: "#f97316" }}>
+                🔥 {streak}x streak{prestige >= 5 && streak >= 5 ? ` — 👑 ${(1 + streak * 0.1).toFixed(1)}× mult` : ""}
+              </div>
+            )}
+
+            {/* ── Crown Burst (P30+) ── */}
+            {prestige >= 30 && !crownBurst && energy >= maxEnergy && (
+              <div className="text-center">
+                <button onClick={triggerCrownBurst} className="text-[11px] bg-red-900/40 hover:bg-red-800/50 px-4 py-1.5 rounded-full text-red-300 transition-all">
+                  🔥 Crown Burst — drain all energy for 3× taps
+                </button>
+              </div>
+            )}
+            {crownBurst && (
+              <div className="text-center">
+                <span className="text-[11px] font-bold text-red-400 animate-pulse">🔥 CROWN BURST ACTIVE — {10 - crownBurstTaps} taps remaining</span>
+              </div>
+            )}
+
+            {/* ── 1 XNT Dev Fee Gate ── */}
+            {prestige >= 1 && !xntDevFeePaid && (
+              <div className="bg-[#a78bfa]/10 border border-[#a78bfa]/20 rounded-xl px-4 py-3 text-center">
+                <p className="text-xs font-bold text-[#a78bfa]">✦ 1 XNT Dev Fee</p>
+                <p className="text-[9px] text-gray-400 mt-1 mb-2">Pay 1 XNT to unlock game access and enable future XNT token pairs</p>
+                <button
+                  onClick={payXntFee}
+                  className="px-6 py-2 rounded-lg text-sm font-bold bg-gradient-to-r from-[#a78bfa] to-[#7c3aed] text-white"
+                >
+                  Pay 1 XNT & Unlock
+                </button>
+              </div>
+            )}
+
+            {xntDevFeePaid && (
+              <div className="bg-emerald-900/20 border border-emerald-600/30 rounded-xl px-4 py-2 text-center">
+                <p className="text-[10px] font-bold text-emerald-400">✅ XNT Dev Fee Paid — Game Active</p>
+              </div>
+            )}
+
+            {/* ── Prestige button ── */}
+            <div className="text-center">
+              <button
+                onClick={handlePrestige}
+                disabled={nex < prestigeCost || prestige >= 100}
+                className={`px-8 py-3 rounded-xl text-sm font-bold transition-all ${
+                  nex >= prestigeCost && prestige < 100
+                    ? "bg-gradient-to-r from-[#a78bfa] to-[#7c3aed] text-white animate-pulse shadow-lg shadow-[#a78bfa]/20"
+                    : "bg-gray-800/30 text-gray-500"
+                }`}
+              >
+                {prestige >= 100 ? "🏆 MAX PRESTIGE" :
+                 nex < prestigeCost ? `Need ${(prestigeCost - nex).toLocaleString()} more NEX (~${tapsPerPrestige - Math.floor(nex / (NEX_PER_TAP * nexMult))} taps)` :
+                 `🔄 Prestige P${prestige} → P${prestige + 1} (${prestigeCost.toLocaleString()} NEX)`}
+              </button>
+              <p className="text-[9px] text-gray-600 mt-1">~0.1 XNT in gas — {tapsPerPrestige} taps at current rate</p>
+            </div>
+
+            {/* ── Milestones panel ── */}
+            <div className="bg-white/[0.02] rounded-xl px-4 py-3 border border-white/5">
+              <p className="text-xs font-bold mb-2 text-gray-400">🏅 Milestones</p>
+              <div className="grid grid-cols-4 gap-1.5">
+                {MILESTONES.map(m => {
+                  const earned = prestige >= m.at;
+                  return (
+                    <div key={m.at} className={`text-center p-1.5 rounded-lg ${earned ? "bg-[#a78bfa]/10 border border-[#a78bfa]/20" : "bg-white/[0.02] border border-white/5 opacity-40"}`}>
+                      <p className="text-[9px] font-bold">{earned ? m.label : `P${m.at}`}</p>
+                      <p className="text-[7px] text-gray-500">{earned ? m.desc : "🔒"}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+          </div>
+        )}
+
+        {/* ══════════════════════ MINT TAB ══════════════════════ */}
+        {tab === "mint" && (
+          <div className="px-4 pt-4 space-y-3">
+
+            <div className="text-center">
+              <span style={{ color: ACCENT }} className="text-xs">💎 NEX: {nex.toLocaleString()}</span>
+              <p className="text-[10px] text-gray-500 mt-1">Prestige {prestige} — mint iNFTs at your current level</p>
+            </div>
+
+            {/* ── Mint ── */}
+            <div className="bg-white/[0.02] rounded-xl px-4 py-3 border border-white/5">
+              <p className="text-xs font-bold mb-2">🎨 Mint iNFT</p>
+              <p className="text-[10px] text-gray-500 mb-2">Cost: {MINT_COST.toLocaleString()} NEX — one per prestige level (max 10)</p>
+              <button
+                onClick={mintNft}
+                disabled={nex < MINT_COST || prestige < 1 || (mintCounts[prestige] || 0) >= 10}
+                className={`w-full py-2.5 rounded-xl text-sm font-bold transition-all ${
+                  nex >= MINT_COST && prestige >= 1 && (mintCounts[prestige] || 0) < 10
+                    ? "bg-gradient-to-r from-[#a78bfa] to-[#7c3aed] text-white shadow-lg shadow-[#a78bfa]/15"
+                    : "bg-gray-800/30 text-gray-500"
+                }`}
+              >
+                {prestige < 1 ? "Prestige first" :
+                 (mintCounts[prestige] || 0) >= 10 ? `Max minted for P${prestige}` :
+                 nex < MINT_COST ? `Need ${(MINT_COST - nex).toLocaleString()} more NEX (${Math.ceil((MINT_COST - nex) / (NEX_PER_TAP * nexMult))} taps)` :
+                 `Mint P${prestige} iNFT (${(mintCounts[prestige] || 0)}/10)`}
+              </button>
+            </div>
+
+            {/* ── Forge ── */}
+            <div className="bg-white/[0.02] rounded-xl px-4 py-3 border border-white/5">
+              <p className="text-xs font-bold mb-2">🔨 Forge 3 → 1</p>
+              <p className="text-[10px] text-gray-500 mb-2">Combine 3 iNFTs of the same level → 1 of the next level</p>
+              <button
+                onClick={forgeNfts}
+                disabled={mintedNfts.length < 3}
+                className={`w-full py-2.5 rounded-xl text-sm font-bold transition-all ${
+                  mintedNfts.length >= 3
+                    ? "bg-gradient-to-r from-[#a78bfa] to-[#7c3aed] text-white"
+                    : "bg-gray-800/30 text-gray-500"
+                }`}
+              >
+                Forge ({mintedNfts.length} iNFTs available)
+              </button>
+            </div>
+
+            {/* ── iNFT grid ── */}
+            {mintedNfts.length > 0 && (
+              <div className="bg-white/[0.02] rounded-xl px-4 py-3 border border-white/5">
+                <p className="text-xs font-bold mb-2">🎴 Your iNFTs ({mintedNfts.length})</p>
+                <p className="text-[8px] text-gray-500 mb-2">tap to burn → collect prestige token</p>
+                <div className="flex flex-wrap gap-2 justify-center">
+                  {mintedNfts.map((nft, idx) => {
+                    const badgePath = getPrestigeBadgePath(nft.prestige);
+                    const ticker = PRESTIGE_TICKERS[nft.prestige - 1] ?? "???";
+                    return (
+                      <div key={idx} className="relative group" onClick={() => burnNft(nft.prestige, nft.seed)}>
+                        <div className="w-20 h-24 rounded-xl overflow-hidden border border-[#a78bfa]/20 cursor-pointer hover:border-[#a78bfa]/50 transition-all hover:scale-105">
+                          <img src={badgePath} alt={`P${nft.prestige} iNFT`} className="w-full h-full object-cover" />
+                        </div>
+                        <span className="text-[8px] text-center block mt-0.5 font-bold" style={{ color: ACCENT }}>P{nft.prestige} · ${ticker}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {mintedNfts.length === 0 && (
+              <div className="text-center py-6">
+                <p className="text-xs text-gray-500">No iNFTs yet. Prestige to unlock minting.</p>
+              </div>
+            )}
+
+          </div>
+        )}
+
+        {/* ══════════════════════ TOKENS TAB ══════════════════════ */}
+        {tab === "tokens" && (
+          <div className="px-4 pt-4 space-y-3">
+
+            <div className="text-center">
+              <span className="text-xs text-gray-400">🪙 Your collected prestige tokens</span>
+              <p className="text-[10px] text-gray-500 mt-1">Burning iNFTs gives you the corresponding prestige-level token</p>
+            </div>
+
+            {/* ── Token inventory ── */}
+            {Object.keys(tokens).length > 0 ? (
+              <div className="bg-white/[0.02] rounded-xl px-4 py-3 border border-white/5">
+                <div className="space-y-2">
+                  {Object.entries(tokens)
+                    .sort(([a], [b]) => Number(a) - Number(b))
+                    .map(([lvl, count]) => {
+                      const level = Number(lvl);
+                      const name = PRESTIGE_NAMES[level - 1] ?? "UNKNOWN";
+                      const ticker = PRESTIGE_TICKERS[level - 1] ?? "???";
+                      const badgePath = getPrestigeBadgePath(level);
+                      return (
+                        <div key={lvl} className="flex items-center gap-3 bg-white/[0.02] rounded-xl p-2.5 border border-white/5">
+                          <div className="w-10 h-12 rounded-lg overflow-hidden border border-[#a78bfa]/20 flex-shrink-0">
+                            <img src={badgePath} alt={ticker} className="w-full h-full object-cover" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-bold truncate">{name}</p>
+                            <p className="text-[10px]" style={{ color: ACCENT }}>${ticker}</p>
+                            <p className="text-[9px] text-gray-500">Prestige {level}</p>
+                          </div>
+                          <div className="text-right flex-shrink-0">
+                            <p className="text-lg font-bold" style={{ color: GOLD }}>{count}</p>
+                            <p className="text-[8px] text-gray-500">held</p>
+                            {xntDevFeePaid && (
+                              <p className="text-[7px] text-emerald-500 mt-0.5">⟠ XNT pair ready</p>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <p className="text-3xl mb-2 opacity-30">✦</p>
+                <p className="text-xs text-gray-500">No tokens yet.</p>
+                <p className="text-[10px] text-gray-600 mt-1">Mint and burn iNFTs to collect prestige tokens.</p>
+              </div>
+            )}
+
+            {/* ── Token stats ── */}
+            {Object.keys(tokens).length > 0 && (
+              <div className="bg-white/[0.02] rounded-xl px-4 py-3 border border-white/5">
+                <p className="text-[10px] font-bold mb-1 text-gray-400">📊 Summary</p>
+                <div className="grid grid-cols-2 gap-2 text-center">
+                  <div className="bg-white/[0.02] rounded-lg p-2">
+                    <p className="text-sm font-bold" style={{ color: GOLD }}>{Object.values(tokens).reduce((a, b) => a + b, 0)}</p>
+                    <p className="text-[8px] text-gray-500">Total Tokens</p>
+                  </div>
+                  <div className="bg-white/[0.02] rounded-lg p-2">
+                    <p className="text-sm font-bold" style={{ color: ACCENT }}>{Object.keys(tokens).length}</p>
+                    <p className="text-[8px] text-gray-500">Unique Types</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+          </div>
+        )}
+
+      </div>
+
+      {/* ═══ BOTTOM NAV ═══ */}
+      <div className="fixed bottom-0 left-0 right-0 bg-[#0a0a12]/90 backdrop-blur border-t border-white/5 z-40">
+        <div className="flex">
+          {bottomTabs.map(t => (
+            <button key={t.key} onClick={() => setTab(t.key)}
+              className={`flex-1 py-3 text-center text-xs font-bold transition-all ${tab === t.key ? "text-[#a78bfa] bg-white/5" : "text-gray-600"}`}
+            >
+              {t.label}<br /><span className="text-[9px]">{t.title}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}

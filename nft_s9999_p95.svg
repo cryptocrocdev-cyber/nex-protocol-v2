@@ -1,0 +1,419 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500">
+  <defs>
+    <!-- Background gradient -->
+    <linearGradient id="space-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#000008"/>
+      <stop offset="50%" stop-color="#050520"/>
+      <stop offset="100%" stop-color="#0a0030"/>
+    </linearGradient>
+
+    <!-- Core glow -->
+    <radialGradient id="core-glow" cx="50%" cy="45%" r="55%">
+      <stop offset="0%" stop-color="#88bbff" stop-opacity="0.15"/>
+      <stop offset="30%" stop-color="#ffffff" stop-opacity="0.08"/>
+      <stop offset="100%" stop-color="transparent" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Wraith void gradient -->
+    <radialGradient id="wraith-void" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#000000" stop-opacity="0.6"/>
+      <stop offset="50%" stop-color="#ffffff" stop-opacity="0.05"/>
+      <stop offset="100%" stop-color="transparent" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Filters -->
+    <filter id="glow-strong">
+      <feGaussianBlur stdDeviation="10.333333333333332" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glow-soft">
+      <feGaussianBlur stdDeviation="2" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glow-gem">
+      <feGaussianBlur stdDeviation="2.5" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="blur-large">
+      <feGaussianBlur stdDeviation="40"/>
+    </filter>
+
+    <!-- Animations -->
+    <style>
+      @keyframes pulse-core {
+        0%, 100% { opacity: 0.6; }
+        50% { opacity: 1; }
+      }
+      @keyframes spin-slow {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+      }
+      @keyframes float {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-3px); }
+      }
+      @keyframes orbit-drift-0 { 0%, 100% { opacity: 0.15; } 50% { opacity: 0.5; } }
+      @keyframes orbit-drift-1 { 0%, 100% { opacity: 0.12; } 50% { opacity: 0.4; } }
+      @keyframes orbit-drift-2 { 0%, 100% { opacity: 0.1; } 50% { opacity: 0.36; } }
+      @keyframes gem-pulse { 0%, 100% { opacity: 0.2; } 50% { opacity: 0.5; } }
+      @keyframes twinkle { 0%, 100% { opacity: 0.15; } 50% { opacity: 0.6; } }
+      .pulse { animation: pulse-core 3s ease-in-out infinite; }
+      .pulse-fast { animation: pulse-core 1.8s ease-in-out infinite; }
+      .float { animation: float 4s ease-in-out infinite; }
+      .orbit-0 { animation: orbit-drift-0 4s ease-in-out infinite; }
+      .orbit-1 { animation: orbit-drift-1 5s ease-in-out infinite 0.6s; }
+      .orbit-2 { animation: orbit-drift-2 6s ease-in-out infinite 1.2s; }
+    </style>
+  </defs>
+
+  <!-- Background layers -->
+  <rect width="500" height="500" fill="url(#space-bg)"/>
+  <rect width="500" height="500" fill="url(#space-bg)"/>
+  <ellipse cx="67.8" cy="142.9" rx="219.9" ry="138.7" fill="#88bbff" opacity="0.07233476029708982" filter="url(#blur-large)"/>
+  <ellipse cx="87.4" cy="278.1" rx="100.1" ry="118.0" fill="#88bbff" opacity="0.07317674060352147" filter="url(#blur-large)"/>
+  <circle cx="442.6" cy="114.2" r="1.5" fill="#ffffff" opacity="0.3579054506029934"/>
+  <circle cx="268.5" cy="350.7" r="0.5" fill="#ffffff" opacity="0.3243133265990764"/>
+  <circle cx="16.5" cy="441.6" r="1.6" fill="#ffffff" opacity="0.5155744343996048"/>
+  <line x1="238.82846857933328" y1="271.62600595271215" x2="244.82846857933328" y2="271.62600595271215" stroke="#ffffff" stroke-width="0.5" opacity="0.09782530348747968"/>
+  <line x1="241.82846857933328" y1="268.62600595271215" x2="241.82846857933328" y2="274.62600595271215" stroke="#ffffff" stroke-width="0.5" opacity="0.09782530348747968"/>
+  <circle cx="241.8" cy="271.6" r="1.7" fill="#ffffff" opacity="0.19565060697495937"/>
+  <circle cx="475.0" cy="450.6" r="1.6" fill="#ffffff" opacity="0.28676513452082875"/>
+  <circle cx="287.2" cy="198.1" r="0.6" fill="#ffffff" opacity="0.40508585607167336"/>
+  <circle cx="315.8" cy="250.7" r="1.7" fill="#ffffff" opacity="0.41239843899384143"/>
+  <circle cx="151.5" cy="143.5" r="0.7" fill="#ffffff" opacity="0.4157480969792232"/>
+  <circle cx="301.5" cy="357.7" r="1.1" fill="#ffffff" opacity="0.25601099790073933"/>
+  <circle cx="235.5" cy="69.4" r="0.5" fill="#ffffff" opacity="0.5400980410398916"/>
+  <circle cx="367.0" cy="104.4" r="1.1" fill="#ffffff" opacity="0.15645267125219106"/>
+  <circle cx="368.5" cy="317.3" r="0.8" fill="#ffffff" opacity="0.5201347451424226"/>
+  <circle cx="107.8" cy="424.3" r="1.4" fill="#ffffff" opacity="0.47652670273091646"/>
+  <circle cx="56.7" cy="89.8" r="1.3" fill="#ffffff" opacity="0.24882839280180633"/>
+  <circle cx="303.8" cy="384.0" r="1.8" fill="#ffffff" opacity="0.510284989583306"/>
+  <circle cx="7.7" cy="272.6" r="0.4" fill="#ffffff" opacity="0.6225885714869946"/>
+  <circle cx="121.1" cy="369.3" r="1.7" fill="#ffffff" opacity="0.4980493751121685"/>
+  <line x1="202.9031683835201" y1="330.34054832998663" x2="208.9031683835201" y2="330.34054832998663" stroke="#ffffff" stroke-width="0.5" opacity="0.12931188532384114"/>
+  <line x1="205.9031683835201" y1="327.34054832998663" x2="205.9031683835201" y2="333.34054832998663" stroke="#ffffff" stroke-width="0.5" opacity="0.12931188532384114"/>
+  <circle cx="205.9" cy="330.3" r="1.7" fill="#ffffff" opacity="0.25862377064768227"/>
+  <circle cx="49.5" cy="445.5" r="0.7" fill="#ffffff" opacity="0.20535918730311095"/>
+  <circle cx="56.2" cy="311.6" r="1.0" fill="#ffffff" opacity="0.16472138531971722"/>
+  <circle cx="165.6" cy="359.0" r="0.9" fill="#ffffff" opacity="0.5537287827813998"/>
+  <circle cx="343.9" cy="328.2" r="1.7" fill="#ffffff" opacity="0.26324429663363846"/>
+  <circle cx="486.4" cy="291.0" r="0.3" fill="#ffffff" opacity="0.3467736793449149"/>
+  <circle cx="385.1" cy="215.2" r="1.5" fill="#ffffff" opacity="0.515187470219098"/>
+  <circle cx="399.0" cy="471.2" r="0.7" fill="#ffffff" opacity="0.5487140874378383"/>
+  <circle cx="426.2" cy="470.7" r="0.6" fill="#ffffff" opacity="0.4689885800238699"/>
+  <circle cx="407.4" cy="388.3" r="0.5" fill="#ffffff" opacity="0.610648418054916"/>
+  <circle cx="448.6" cy="333.9" r="1.5" fill="#ffffff" opacity="0.40879923440516"/>
+  <circle cx="380.2" cy="279.0" r="0.9" fill="#ffffff" opacity="0.48765892125666144"/>
+  <circle cx="287.6" cy="424.7" r="0.9" fill="#ffffff" opacity="0.2731374500785023"/>
+  <circle cx="225.7" cy="366.6" r="0.7" fill="#ffffff" opacity="0.2362307179486379"/>
+  <circle cx="55.8" cy="65.5" r="1.0" fill="#ffffff" opacity="0.4464908804278821"/>
+  <circle cx="338.7" cy="303.1" r="1.5" fill="#ffffff" opacity="0.24604765579570084"/>
+  <circle cx="147.7" cy="293.4" r="0.8" fill="#ffffff" opacity="0.6247377013554797"/>
+  <circle cx="197.8" cy="245.9" r="1.3" fill="#ffffff" opacity="0.25404346173163506"/>
+  <circle cx="8.4" cy="205.1" r="1.5" fill="#ffffff" opacity="0.5468085933011025"/>
+  <circle cx="361.1" cy="38.2" r="0.9" fill="#ffffff" opacity="0.3240855424432084"/>
+  <circle cx="65.7" cy="145.5" r="1.0" fill="#ffffff" opacity="0.47641777954995634"/>
+  <circle cx="71.0" cy="443.1" r="0.4" fill="#ffffff" opacity="0.23558719197753816"/>
+  <circle cx="72.3" cy="455.3" r="0.7" fill="#ffffff" opacity="0.5218980081612244"/>
+  <circle cx="345.0" cy="155.8" r="1.1" fill="#ffffff" opacity="0.30381536120548847"/>
+  <circle cx="242.0" cy="46.5" r="0.3" fill="#ffffff" opacity="0.35057261257898065"/>
+  <circle cx="145.6" cy="262.1" r="1.8" fill="#ffffff" opacity="0.37740545042324813"/>
+  <circle cx="193.1" cy="121.1" r="1.1" fill="#ffffff" opacity="0.4066591394133866"/>
+  <circle cx="448.8" cy="200.8" r="1.3" fill="#ffffff" opacity="0.3023041535401717"/>
+  <circle cx="409.9" cy="129.0" r="1.0" fill="#ffffff" opacity="0.20697047838475555"/>
+  <circle cx="299.7" cy="442.5" r="0.3" fill="#ffffff" opacity="0.3299877277808264"/>
+  <circle cx="394.2" cy="111.7" r="0.7" fill="#ffffff" opacity="0.593127891048789"/>
+  <circle cx="446.8" cy="100.4" r="0.9" fill="#ffffff" opacity="0.385179303213954"/>
+  <circle cx="140.3" cy="436.8" r="1.5" fill="#ffffff" opacity="0.6127220203401521"/>
+  <circle cx="61.7" cy="203.0" r="1.5" fill="#ffffff" opacity="0.28933879439719024"/>
+  <circle cx="175.9" cy="270.0" r="1.2" fill="#ffffff" opacity="0.3647537149721757"/>
+  <circle cx="93.4" cy="255.9" r="0.5" fill="#ffffff" opacity="0.4576237027999014"/>
+  <line x1="377.60975489905104" y1="222.03318684361875" x2="383.60975489905104" y2="222.03318684361875" stroke="#ffffff" stroke-width="0.5" opacity="0.3106382903526537"/>
+  <line x1="380.60975489905104" y1="219.03318684361875" x2="380.60975489905104" y2="225.03318684361875" stroke="#ffffff" stroke-width="0.5" opacity="0.3106382903526537"/>
+  <circle cx="380.6" cy="222.0" r="1.5" fill="#ffffff" opacity="0.6212765807053074"/>
+  <circle cx="373.6" cy="329.2" r="0.3" fill="#ffffff" opacity="0.24522899915464222"/>
+  <circle cx="114.7" cy="454.5" r="0.7" fill="#ffffff" opacity="0.386859135562554"/>
+  <circle cx="180.3" cy="415.8" r="0.3" fill="#ffffff" opacity="0.5642859244020656"/>
+  <circle cx="142.3" cy="356.0" r="1.1" fill="#ffffff" opacity="0.5356988048646599"/>
+  <circle cx="80.3" cy="433.3" r="0.7" fill="#ffffff" opacity="0.25500212269835176"/>
+  <circle cx="451.7" cy="356.2" r="0.6" fill="#ffffff" opacity="0.38296299821231516"/>
+  <line x1="389.6663356064819" y1="386.2198582710698" x2="395.6663356064819" y2="386.2198582710698" stroke="#ffffff" stroke-width="0.5" opacity="0.3186424124753103"/>
+  <line x1="392.6663356064819" y1="383.2198582710698" x2="392.6663356064819" y2="389.2198582710698" stroke="#ffffff" stroke-width="0.5" opacity="0.3186424124753103"/>
+  <circle cx="392.7" cy="386.2" r="1.7" fill="#ffffff" opacity="0.6372848249506206"/>
+  <circle cx="319.3" cy="307.3" r="1.1" fill="#ffffff" opacity="0.16919452007859945"/>
+  <circle cx="489.1" cy="408.9" r="0.8" fill="#ffffff" opacity="0.25182358173187824"/>
+  <line x1="304.4087254446931" y1="180.34222916699946" x2="310.4087254446931" y2="180.34222916699946" stroke="#ffffff" stroke-width="0.5" opacity="0.10969675098313018"/>
+  <line x1="307.4087254446931" y1="177.34222916699946" x2="307.4087254446931" y2="183.34222916699946" stroke="#ffffff" stroke-width="0.5" opacity="0.10969675098313018"/>
+  <circle cx="307.4" cy="180.3" r="1.8" fill="#ffffff" opacity="0.21939350196626037"/>
+  <circle cx="111.1" cy="31.4" r="0.5" fill="#ffffff" opacity="0.17616489527281373"/>
+  <circle cx="253.0" cy="453.5" r="1.7" fill="#ffffff" opacity="0.40179477641358974"/>
+  <circle cx="38.8" cy="471.1" r="0.6" fill="#ffffff" opacity="0.6226545317098499"/>
+  <circle cx="294.8" cy="492.3" r="1.2" fill="#ffffff" opacity="0.6182196559151635"/>
+  <circle cx="354.4" cy="24.1" r="0.4" fill="#ffffff" opacity="0.44334205109626057"/>
+  <circle cx="17.9" cy="396.1" r="0.6" fill="#ffffff" opacity="0.6488764208974317"/>
+  <line x1="375.1914855190553" y1="121.42189879901707" x2="381.1914855190553" y2="121.42189879901707" stroke="#ffffff" stroke-width="0.5" opacity="0.16976947743678467"/>
+  <line x1="378.1914855190553" y1="118.42189879901707" x2="378.1914855190553" y2="124.42189879901707" stroke="#ffffff" stroke-width="0.5" opacity="0.16976947743678467"/>
+  <circle cx="378.2" cy="121.4" r="1.3" fill="#ffffff" opacity="0.33953895487356933"/>
+  <circle cx="310.8" cy="480.3" r="0.9" fill="#ffffff" opacity="0.21767050095368176"/>
+  <circle cx="286.1" cy="425.7" r="1.2" fill="#ffffff" opacity="0.6235333151184023"/>
+  <circle cx="207.4" cy="146.5" r="1.4" fill="#ffffff" opacity="0.18270986292045563"/>
+  <circle cx="202.5" cy="252.3" r="1.5" fill="#ffffff" opacity="0.6283482067286968"/>
+  <circle cx="189.7" cy="288.2" r="0.5" fill="#ffffff" opacity="0.34098563480656596"/>
+  <circle cx="61.7" cy="465.0" r="0.7" fill="#ffffff" opacity="0.4680641857907176"/>
+  <circle cx="9.3" cy="397.6" r="0.6" fill="#ffffff" opacity="0.4824882406741381"/>
+  <circle cx="247.8" cy="447.2" r="0.3" fill="#ffffff" opacity="0.16795890112407505"/>
+  <circle cx="121.9" cy="75.5" r="0.6" fill="#ffffff" opacity="0.5084901300491765"/>
+  <rect width="500" height="500" fill="url(#core-glow)"/>
+
+  <!-- Frame -->
+  <rect x="4" y="4" width="492" height="492" rx="14" fill="none" stroke="#ffffff" stroke-opacity="0.25" stroke-width="1.5"/>
+  <rect x="3" y="3" width="494" height="494" rx="14" fill="none" stroke="#ffffff" stroke-opacity="0.5" stroke-width="3"/>
+  <rect x="12" y="12" width="476" height="476" rx="10" fill="none" stroke="#ffffff" stroke-opacity="0.2" stroke-width="1"/>
+  <rect x="18" y="18" width="464" height="464" rx="6" fill="none" stroke="#ffffff" stroke-opacity="0.08" stroke-width="0.5"/>
+  <polygon points="12.0,2.0 14.4,8.8 21.5,8.9 15.8,13.2 17.9,20.1 12.0,16.0 6.1,20.1 8.2,13.2 2.5,8.9 9.6,8.8" fill="#ffffff" opacity="0.15"/>
+  <polygon points="488.0,2.0 490.4,8.8 497.5,8.9 491.8,13.2 493.9,20.1 488.0,16.0 482.1,20.1 484.2,13.2 478.5,8.9 485.6,8.8" fill="#ffffff" opacity="0.15"/>
+  <polygon points="12.0,478.0 14.4,484.8 21.5,484.9 15.8,489.2 17.9,496.1 12.0,492.0 6.1,496.1 8.2,489.2 2.5,484.9 9.6,484.8" fill="#ffffff" opacity="0.15"/>
+  <polygon points="488.0,478.0 490.4,484.8 497.5,484.9 491.8,489.2 493.9,496.1 488.0,492.0 482.1,496.1 484.2,489.2 478.5,484.9 485.6,484.8" fill="#ffffff" opacity="0.15"/>
+
+  <!-- Corner decorations -->
+  <polygon points="12.0,7.0 13.2,10.4 16.8,10.5 13.9,12.6 14.9,16.0 12.0,14.0 9.1,16.0 10.1,12.6 7.2,10.5 10.8,10.4" fill="#ffffff" opacity="0.3"/>
+  <polygon points="488.0,7.0 489.2,10.4 492.8,10.5 489.9,12.6 490.9,16.0 488.0,14.0 485.1,16.0 486.1,12.6 483.2,10.5 486.8,10.4" fill="#ffffff" opacity="0.3"/>
+  <polygon points="12.0,483.0 13.2,486.4 16.8,486.5 13.9,488.6 14.9,492.0 12.0,490.0 9.1,492.0 10.1,488.6 7.2,486.5 10.8,486.4" fill="#ffffff" opacity="0.3"/>
+  <polygon points="488.0,483.0 489.2,486.4 492.8,486.5 489.9,488.6 490.9,492.0 488.0,490.0 485.1,492.0 486.1,488.6 483.2,486.5 486.8,486.4" fill="#ffffff" opacity="0.3"/>
+
+  <!-- Orbital rings -->
+  <g class="float">
+    <ellipse cx="250" cy="250" rx="56.0" ry="19.6"
+      fill="none" stroke="#ffffff" stroke-width="0.8" opacity="0.21"
+      stroke-dasharray="4.50057421810925,4.000498020555824" transform="rotate(117.7 250 250)" class="orbit-0"/>
+    <circle cx="224.0" cy="267.3" r="2" fill="#88bbff" opacity="0.4" class="orbital-body-0-0"/>
+    <circle cx="276.0" cy="232.7" r="2" fill="#88bbff" opacity="0.4" class="orbital-body-0-1"/>
+    <ellipse cx="250" cy="250" rx="95.6" ry="41.1"
+      fill="none" stroke="#ffffff" stroke-width="1.1" opacity="0.27"
+      stroke-dasharray="4.9663630104623735,5.057611816795543" transform="rotate(419.0 250 250)" class="orbit-1"/>
+    <circle cx="299.2" cy="285.2" r="2" fill="#88bbff" opacity="0.4" class="orbital-body-1-0"/>
+    <circle cx="200.8" cy="214.8" r="2" fill="#88bbff" opacity="0.4" class="orbital-body-1-1"/>
+    <ellipse cx="250" cy="250" rx="126.0" ry="64.3"
+      fill="none" stroke="#ffffff" stroke-width="1.4" opacity="0.32999999999999996"
+      stroke-dasharray="2.912149077747017,4.932431671302766" transform="rotate(353.2 250 250)" class="orbit-2"/>
+    <circle cx="375.1" cy="242.4" r="2" fill="#88bbff" opacity="0.4" class="orbital-body-2-0"/>
+    <circle cx="124.9" cy="257.6" r="2" fill="#88bbff" opacity="0.4" class="orbital-body-2-1"/>
+    <ellipse cx="250" cy="250" rx="160.1" ry="94.5"
+      fill="none" stroke="#ffffff" stroke-width="1.7" opacity="0.39"
+      stroke-dasharray="5.2525593363679945,4.5932244304567575" transform="rotate(479.7 250 250)" class="orbit-3"/>
+    <circle cx="170.6" cy="332.0" r="2" fill="#88bbff" opacity="0.4" class="orbital-body-3-0"/>
+    <circle cx="329.4" cy="168.0" r="2" fill="#88bbff" opacity="0.4" class="orbital-body-3-1"/>
+  </g>
+
+  <!-- Mandala (higher tiers) -->
+  <g class="pulse">
+    <path d="M 296.9 250.0
+      Q 304.9 246.8
+        313.1 250.0"
+      fill="none" stroke="#ffffff" stroke-width="1" opacity="0.12" stroke-linecap="round"/>
+    <path d="M 313.1 250.0 Q 318.2 282.8 289.3 299.3"
+      fill="none" stroke="#ffffff" stroke-width="0.5" opacity="0.06"/>
+    <path d="M 279.2 286.7
+      Q 286.6 291.0
+        289.3 299.3"
+      fill="none" stroke="#ffffff" stroke-width="1" opacity="0.12" stroke-linecap="round"/>
+    <path d="M 289.3 299.3 Q 266.8 323.8 236.0 311.5"
+      fill="none" stroke="#ffffff" stroke-width="0.5" opacity="0.06"/>
+    <path d="M 239.6 295.7
+      Q 234.5 302.8
+        236.0 311.5"
+      fill="none" stroke="#ffffff" stroke-width="1" opacity="0.12" stroke-linecap="round"/>
+    <path d="M 236.0 311.5 Q 202.8 309.2 193.2 277.4"
+      fill="none" stroke="#ffffff" stroke-width="0.5" opacity="0.06"/>
+    <path d="M 207.7 270.4
+      Q 203.7 279.7
+        193.2 277.4"
+      fill="none" stroke="#ffffff" stroke-width="1" opacity="0.12" stroke-linecap="round"/>
+    <path d="M 193.2 277.4 Q 174.3 250.0 193.2 222.6"
+      fill="none" stroke="#ffffff" stroke-width="0.5" opacity="0.06"/>
+    <path d="M 207.7 229.6
+      Q 198.8 230.1
+        193.2 222.6"
+      fill="none" stroke="#ffffff" stroke-width="1" opacity="0.12" stroke-linecap="round"/>
+    <path d="M 193.2 222.6 Q 202.8 190.8 236.0 188.5"
+      fill="none" stroke="#ffffff" stroke-width="0.5" opacity="0.06"/>
+    <path d="M 239.6 204.3
+      Q 242.6 195.5
+        236.0 188.5"
+      fill="none" stroke="#ffffff" stroke-width="1" opacity="0.12" stroke-linecap="round"/>
+    <path d="M 236.0 188.5 Q 266.8 176.2 289.3 200.7"
+      fill="none" stroke="#ffffff" stroke-width="0.5" opacity="0.06"/>
+    <path d="M 279.2 213.3
+      Q 284.8 207.5
+        289.3 200.7"
+      fill="none" stroke="#ffffff" stroke-width="1" opacity="0.12" stroke-linecap="round"/>
+    <path d="M 289.3 200.7 Q 318.2 217.2 313.1 250.0"
+      fill="none" stroke="#ffffff" stroke-width="0.5" opacity="0.06"/>
+    <circle cx="250" cy="250" r="46.90789021085948" fill="none" stroke="#ffffff" stroke-width="0.8" opacity="0.1" stroke-dasharray="2,4"/>
+  </g>
+
+  <!-- Class emblem (the main artwork) -->
+  <g class="pulse" opacity="1">
+    <polygon points="250.0,129.0 333.1,177.0 333.1,273.0 250.0,321.0 166.9,273.0 166.9,177.0" fill="none" stroke="#ffffff" stroke-width="1.5" opacity="0.3"/>
+    <path d="M 250 225 L 260.7 189.0
+      L 238.0 189.4
+      L 219.8 202.8 Z"
+      fill="#ffffff" opacity="0.08" stroke="#ffffff" stroke-width="0.5" opacity="0.15"/>
+    <path d="M 250 225 L 198.7 226.9
+      L 203.8 247.5
+      L 216.9 264.3 Z"
+      fill="#ffffff" opacity="0.12" stroke="#ffffff" stroke-width="0.5" opacity="0.18"/>
+    <path d="M 250 225 L 206.1 276.2
+      L 232.1 290.0
+      L 261.6 291.5 Z"
+      fill="#ffffff" opacity="0.16" stroke="#ffffff" stroke-width="0.5" opacity="0.21"/>
+    <circle cx="250" cy="225" r="14.399999999999999" fill="#88bbff" opacity="0.4" filter="url(#glow-strong)"/>
+    <circle cx="250" cy="225" r="9.6" fill="none" stroke="#ffffff" stroke-width="1" opacity="0.6"/>
+    <line x1="271.6" y1="225.0"
+      x2="280.0" y2="225.0"
+      stroke="#ffffff" stroke-width="2" opacity="0.25"/>
+    <line x1="265.3" y1="240.3"
+      x2="271.2" y2="246.2"
+      stroke="#ffffff" stroke-width="2" opacity="0.25"/>
+    <line x1="250.0" y1="246.6"
+      x2="250.0" y2="255.0"
+      stroke="#ffffff" stroke-width="2" opacity="0.25"/>
+    <line x1="234.7" y1="240.3"
+      x2="228.8" y2="246.2"
+      stroke="#ffffff" stroke-width="2" opacity="0.25"/>
+    <line x1="228.4" y1="225.0"
+      x2="220.0" y2="225.0"
+      stroke="#ffffff" stroke-width="2" opacity="0.25"/>
+    <line x1="234.7" y1="209.7"
+      x2="228.8" y2="203.8"
+      stroke="#ffffff" stroke-width="2" opacity="0.25"/>
+    <line x1="250.0" y1="203.4"
+      x2="250.0" y2="195.0"
+      stroke="#ffffff" stroke-width="2" opacity="0.25"/>
+    <line x1="265.3" y1="209.7"
+      x2="271.2" y2="203.8"
+      stroke="#ffffff" stroke-width="2" opacity="0.25"/>
+    <line x1="249.3" y1="183.0"
+      x2="248.5" y2="135.0"
+      stroke="#ffffff" stroke-width="0.5" opacity="0.15"/>
+    <line x1="286.4" y1="204.0"
+      x2="327.9" y2="179.9"
+      stroke="#ffffff" stroke-width="0.5" opacity="0.15"/>
+    <line x1="286.2" y1="246.3"
+      x2="327.6" y2="270.6"
+      stroke="#ffffff" stroke-width="0.5" opacity="0.15"/>
+    <line x1="249.8" y1="267.0"
+      x2="249.6" y2="315.0"
+      stroke="#ffffff" stroke-width="0.5" opacity="0.15"/>
+    <line x1="213.3" y1="245.4"
+      x2="171.3" y2="268.7"
+      stroke="#ffffff" stroke-width="0.5" opacity="0.15"/>
+    <line x1="213.6" y1="204.0"
+      x2="172.0" y2="180.1"
+      stroke="#ffffff" stroke-width="0.5" opacity="0.15"/>
+  </g>
+
+  <!-- Center sigil symbol -->
+  <text x="250" y="238" text-anchor="middle" font-size="45.833333333333336"
+    fill="#88bbff" opacity="0.8" filter="url(#glow-strong)"
+    font-family="serif" class="pulse">∞</text>
+
+  <!-- Class keyword badge (with text backing for legibility) -->
+  <rect x="195" y="168" width="110" height="26" rx="4" fill="#0a0030" opacity="0.5"/>
+  <text x="250" y="178" text-anchor="middle" font-size="10" fill="#ffffff"
+    opacity="0.85" font-family="monospace" font-weight="bold" letter-spacing="3">FORGE</text>
+  <text x="250" y="190" text-anchor="middle" font-size="8" fill="#88bbff"
+    opacity="0.5" font-family="monospace" letter-spacing="2">TITAN</text>
+
+  <!-- Prestige number (top) -->
+  <text x="250" y="145" text-anchor="middle" font-size="9" fill="#88bbff"
+    opacity="0.4" font-family="monospace" letter-spacing="2">PRESTIGE</text>
+  <text x="250" y="158" text-anchor="middle" font-size="22" font-weight="bold"
+    fill="#ffffff" filter="url(#glow-soft)" font-family="monospace">
+    #095
+  </text>
+
+  <!-- Gems -->
+  <polygon points="200.97430751489136,288.89981555910157 207.7,297.9 204.9,306.8 200.97430751489136,311.3 197.0,306.8 194.2,297.9"
+      fill="#ffffff" opacity="0.6" filter="url(#glow-gem)"/>
+    <polygon points="200.97430751489136,288.89981555910157 194.2,297.9 200.97430751489136,300.1141450420891 207.7,297.9"
+      fill="#ffffff" opacity="0.15"/>
+    <circle cx="198.73144161829387" cy="296.7498461971928" r="2.242865896597505" fill="#ffffff" opacity="0.25" class="anim-gem-0"/>
+    <polygon points="231.8594953573346,333.3473998529979 236.0,338.9 234.3,344.5 231.8594953573346,347.3 229.4,344.5 227.7,338.9"
+      fill="#ffffff" opacity="0.6" filter="url(#glow-gem)"/>
+    <polygon points="231.8594953573346,333.3473998529979 227.7,338.9 231.8594953573346,340.29975965601886 236.0,338.9"
+      fill="#ffffff" opacity="0.15"/>
+    <circle cx="230.4690233967304" cy="338.2140517151126" r="1.3904719606041909" fill="#ffffff" opacity="0.25" class="anim-gem-1"/>
+    <polygon points="206.70134119313576,309.78694449047345 211.3,315.9 209.4,322.0 206.70134119313576,325.1 204.0,322.0 202.1,315.9"
+      fill="#ffffff" opacity="0.6" filter="url(#glow-gem)"/>
+    <polygon points="206.70134119313576,309.78694449047345 202.1,315.9 206.70134119313576,317.4310594858487 211.3,315.9"
+      fill="#ffffff" opacity="0.15"/>
+    <circle cx="205.1725181940607" cy="315.1378249872361" r="1.5288229990750553" fill="#ffffff" opacity="0.25" class="anim-gem-2"/>
+
+  <!-- Tier badge (bottom center) -->
+  <rect x="175" y="440" width="150" height="26" rx="13" fill="#0a0030"
+    stroke="#ffffff" stroke-opacity="0.3" stroke-width="1"/>
+  <text x="250" y="458" text-anchor="middle" font-size="11" fill="#ffffff"
+    font-family="monospace" font-weight="bold">NEXUS</text>
+
+  <!-- Progress dots -->
+  <circle cx="205.0" cy="474" r="2" fill="#ffffff" opacity="0.15" class="pulse-fast"/>
+    <circle cx="215.0" cy="474" r="2" fill="#ffffff" opacity="0.22" class=""/>
+    <circle cx="225.0" cy="474" r="2" fill="#ffffff" opacity="0.29" class="pulse-fast"/>
+    <circle cx="235.0" cy="474" r="2" fill="#ffffff" opacity="0.36" class=""/>
+    <circle cx="245.0" cy="474" r="2" fill="#ffffff" opacity="0.43" class="pulse-fast"/>
+    <circle cx="255.0" cy="474" r="2" fill="#ffffff" opacity="0.50" class=""/>
+    <circle cx="265.0" cy="474" r="2" fill="#ffffff" opacity="0.57" class="pulse-fast"/>
+    <circle cx="275.0" cy="474" r="2" fill="#ffffff" opacity="0.64" class=""/>
+    <circle cx="285.0" cy="474" r="2" fill="#ffffff" opacity="0.71" class="pulse-fast"/>
+    <circle cx="295.0" cy="474" r="2" fill="#ffffff" opacity="0.78" class=""/>
+
+  <!-- Rune text ring (archived path) -->
+  <path id="rune-path" d="M 75 410 A 175 55 0 1 1 425 410" fill="none"/>
+  <text font-size="6" fill="#ffffff" opacity="0.2" font-family="monospace">
+    <textPath href="#rune-path">
+      ✦ NEXUS ✦ TITAN ✦ PRESTIGE #95 ✦ ✦ ✦ ✦
+      ✦ NEXUS ✦ TITAN ✦ PRESTIGE #95 ✦
+    </textPath>
+  </text>
+
+  <!-- Corner accent glow particles -->
+  <circle cx="15" cy="15" r="2" fill="#ffffff" opacity="0.3"
+      class="pulse-fast" style="animation-delay: 0s"/>
+  <circle cx="485" cy="15" r="2" fill="#ffffff" opacity="0.3"
+      class="pulse-fast" style="animation-delay: 0.4s"/>
+  <circle cx="15" cy="485" r="2" fill="#ffffff" opacity="0.3"
+      class="pulse-fast" style="animation-delay: 0.8s"/>
+  <circle cx="485" cy="485" r="2" fill="#ffffff" opacity="0.3"
+      class="pulse-fast" style="animation-delay: 1.2000000000000002s"/>
+
+  <!-- Ambient floating particles -->
+  <circle cx="343.0" cy="415.2" r="1.0073360484093428"
+      fill="#ffffff" opacity="0.10390555375488475"
+      class="pulse-fast" style="animation-delay: 0.0s"/>
+  <circle cx="289.4" cy="421.8" r="1.2283562887459993"
+      fill="#ffffff" opacity="0.23407332862261682"
+      class="pulse-fast" style="animation-delay: 0.3s"/>
+  <circle cx="194.7" cy="245.2" r="1.4076730848755687"
+      fill="#ffffff" opacity="0.14087152656866236"
+      class="pulse-fast" style="animation-delay: 0.6s"/>
+  <circle cx="87.1" cy="98.7" r="0.5022175924386829"
+      fill="#ffffff" opacity="0.22635555653832853"
+      class="pulse-fast" style="animation-delay: 0.9s"/>
+  <circle cx="347.0" cy="356.8" r="0.9599614159669727"
+      fill="#ffffff" opacity="0.11421014324296266"
+      class="pulse-fast" style="animation-delay: 1.2s"/>
+  <circle cx="345.9" cy="95.5" r="0.9211349857505411"
+      fill="#ffffff" opacity="0.2227982581127435"
+      class="pulse-fast" style="animation-delay: 1.5s"/>
+  <circle cx="185.7" cy="236.3" r="0.6046751823741943"
+      fill="#ffffff" opacity="0.1329298823373392"
+      class="pulse-fast" style="animation-delay: 1.8s"/>
+  <circle cx="309.6" cy="468.1" r="1.184013324091211"
+      fill="#ffffff" opacity="0.21878783571301028"
+      class="pulse-fast" style="animation-delay: 2.1s"/>
+
+  <!-- Seed signature (micro watermark bottom-right) -->
+  <text x="490" y="492" text-anchor="end" font-size="5" fill="#ffffff"
+    opacity="0.12" font-family="monospace">#9999</text>
+</svg>
