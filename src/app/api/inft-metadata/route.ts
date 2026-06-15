@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
   const idx = prestige - 1;
   const name = PRESTIGE_NAMES[idx] ?? "Wraith";
   const ticker = PRESTIGE_TICKERS[idx] ?? "WRT";
-  const origin = req.headers.get("origin") || "https://voidprotocol.xyz";
+  const origin = req.headers.get("origin") || req.headers.get("x-forwarded-host") || "https://nex-protocol-v2.vercel.app";
   const imageUrl = `${origin}${getPrestigeBadgePath(prestige)}`;
 
   return NextResponse.json({
