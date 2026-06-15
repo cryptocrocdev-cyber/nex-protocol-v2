@@ -12,15 +12,14 @@ export async function GET(req: NextRequest) {
   const idx = prestige - 1;
   const name = PRESTIGE_NAMES[idx] ?? "Wraith";
   const ticker = PRESTIGE_TICKERS[idx] ?? "WRT";
-  const origin = req.headers.get("origin") || req.headers.get("x-forwarded-host") || "https://nex-protocol-v2.vercel.app";
-  const imageUrl = `${origin}${getPrestigeBadgePath(prestige)}`;
+  const imageUrl = `https://nex-protocol-v2.vercel.app${getPrestigeBadgePath(prestige)}`;
 
   return NextResponse.json({
     name: `${name} #${seed + 1}`,
     symbol: ticker,
     description: `${name} — Prestige Protocol iNFT at Prestige ${prestige}. Burn to mint the ${ticker} token.`,
     image: imageUrl,
-    external_url: origin,
+    external_url: "https://nex-protocol-v2.vercel.app",
     attributes: [
       { trait_type: "Prestige", value: prestige },
       { trait_type: "Rank", value: name },

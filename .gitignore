@@ -5,3 +5,4 @@ out/
 *.node
 .next/cache/
 _nft_gallery.html
+.vercel
