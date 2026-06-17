@@ -1,27 +1,23 @@
 // ─── Game State — Reducer + Persistence ──────────────────────────
-import { computeTapReward, getNexMultAt, getPrestigeCostAt, tryForge } from "./gameEngine";
-import type { NftEntry } from "./gameEngine";
+import { computeTapReward, getTokenXenYield, getMaxMintsAtPrestige, tryForge, getUnlockThreshold, getMintCost } from "./gameEngine";
+import type { TokenEntry } from "./gameEngine";
 
 // ─── Types ────────────────────────────────────────────────────────
 
 /** Schema version — bump when GameState shape changes */
-export const GAME_STATE_VERSION = 2;
-export const STORAGE_KEY = "void-protocol-save-v2";
+export const GAME_STATE_VERSION = 5;
+export const STORAGE_KEY = "void-protocol-save-v5";
 
 export interface GameState {
-  nex: number;
   xnt: number;
   prestige: number;
   streak: number;
   lastTap: number;
   crownBurst: boolean;
   crownBurstTaps: number;
-  mintedNfts: NftEntry[];
+  tokens: TokenEntry[];
   mintCounts: Record<number, number>;
-  totalBurned: number;
-  dailyTaps: number;
-  dailyReset: number;
-  tokens: Record<number, number>;
+  tokenPortfolio: Record<number, number>;
   lpProvided: Record<number, boolean>;
   lpPoolByTier: Record<number, number>;
   xntDevFeePaid: boolean;
@@ -32,43 +28,46 @@ export interface GameState {
   _rev: number;
   marketDevFeePool: number;
   gameRun: number;
+  // ─── XEN Token State ─────────────────────────────────────────
+  /** Per prestige level: how many tokens have been minted globally (across ALL wallets) */
+  globalMintCounts: Record<number, number>;
+  /** Per prestige level: next serial number to assign */
+  nextSerials: Record<number, number>;
+  /** Total yield claimed from all tokens */
+  totalYieldClaimed: number;
 }
 
 export type GameAction =
   | { type: "TAP"; now: number }
   | { type: "PRESTIGE" }
   | { type: "MINT"; seed: number; mintAddress?: string | null }
-  | { type: "BURN_NFT"; prestigeLvl: number; seed: number; mintAddress?: string | null }
+  | { type: "BURN_TOKEN"; prestigeLvl: number; seed: number; mintAddress?: string | null }
   | { type: "FORGE" }
   | { type: "ACTIVATE_CROWN_BURST" }
   | { type: "PAY_DEV_FEE" }
-  | { type: "RESET_DAILY"; now: number }
   | { type: "HYDRATE"; saved: GameState }
-  | { type: "BUY_NFT"; prestige: number; seed: number; price: number }
+  | { type: "BUY_TOKEN"; prestige: number; seed: number; price: number }
   | { type: "RESET_GAME" }
   | { type: "START_DEMO" }
-  | { type: "PROVIDE_LP"; prestige: number };
-
-export const PRESTIGE_XNT_COST = 0.1;
+  | { type: "PROVIDE_LP"; prestige: number }
+  // ─── XEN Token Actions ──────────────────────────────────────
+  | { type: "LOCK_TOKEN"; seed: number; termDays: number; now: number }
+  | { type: "UNLOCK_TOKEN"; seed: number; now: number }
+  | { type: "CLAIM_YIELD"; now: number };
 
 const STREAK_TIMEOUT_MS = 8_000;
-const DAILY_MS = 86_400_000;
 
 export function createInitialState(): GameState {
   return {
-    nex: 0,
     xnt: 0,
     prestige: 0,
     streak: 0,
     lastTap: 0,
     crownBurst: false,
     crownBurstTaps: 0,
-    mintedNfts: [],
+    tokens: [],
     mintCounts: {},
-    totalBurned: 0,
-    dailyTaps: 0,
-    dailyReset: Date.now(),
-    tokens: {},
+    tokenPortfolio: {},
     lpProvided: {},
     lpPoolByTier: {},
     xntDevFeePaid: false,
@@ -78,14 +77,16 @@ export function createInitialState(): GameState {
     _rev: 0,
     marketDevFeePool: 0,
     gameRun: 0,
+    // XEN state
+    globalMintCounts: {},
+    nextSerials: {},
+    totalYieldClaimed: 0,
   };
 }
 
 export function gameReducer(state: GameState, action: GameAction): GameState {
   switch (action.type) {
     case "TAP": {
-      const nexMult = getNexMultAt(state.prestige);
-
       // Streak
       const isInStreak = action.now - state.lastTap < STREAK_TIMEOUT_MS;
       const newStreak = isInStreak ? state.streak + 1 : 1;
@@ -105,29 +106,28 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         prestige: state.prestige,
         streak: newStreak,
         crownBurst: state.crownBurst,
-        nexMult,
       });
 
       return {
         ...state,
-        nex: state.nex + reward,
+        xnt: state.xnt + reward,
         streak: newStreak,
         lastTap: action.now,
         crownBurst: newCrownBurst,
         crownBurstTaps: newCrownBurstTaps,
-        totalBurned: state.totalBurned + reward,
-        dailyTaps: state.dailyTaps + 1,
         _rev: state._rev + 1,
       };
     }
 
     case "PRESTIGE": {
       if (state.prestige >= 100) return state;
-      const cost = getPrestigeCostAt(state.prestige);
-      if (state.nex < cost) return state;
+      // Count how many tokens the player has at current prestige level
+      const tokensAtLevel = state.tokens.filter(t => t.prestige === state.prestige).length;
+      const globalMintsAtLevel = state.globalMintCounts[state.prestige] || 0;
+      const threshold = getUnlockThreshold(state.prestige, globalMintsAtLevel);
+      if (tokensAtLevel < threshold) return state;
       return {
         ...state,
-        nex: state.nex - cost,
         prestige: state.prestige + 1,
         streak: 0,
         crownBurst: false,
@@ -139,50 +139,61 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
 
     case "MINT": {
       if (state.prestige < 1) return state;
-      const maxMints = state.prestige >= 100 ? 1 : 10;
+      const maxMints = getMaxMintsAtPrestige(state.prestige);
       const currentCount = state.mintCounts[state.prestige] || 0;
       if (currentCount >= maxMints) return state;
-      const cost = 5000; // NEX cost to mint
-      if (state.nex < cost) return state;
-      const newNft: NftEntry = {
+      const cost = getMintCost(state.prestige);
+      if (state.xnt < cost) return state;
+
+      // Assign serial number
+      const nextSerial = (state.nextSerials[state.prestige] || 0) + 1;
+      const newToken: TokenEntry = {
         prestige: state.prestige,
+        serial: nextSerial,
         seed: action.seed ?? Math.floor(Math.random() * 1_000_000),
         mintAddress: action.mintAddress ?? null,
+        lockedUntil: null,
+        lockTermDays: 0,
       };
+
       const newMintCounts = { ...state.mintCounts, [state.prestige]: currentCount + 1 };
+      const newGlobalCounts = { ...state.globalMintCounts, [state.prestige]: (state.globalMintCounts[state.prestige] || 0) + 1 };
+      const newSerials = { ...state.nextSerials, [state.prestige]: nextSerial };
+
       return {
         ...state,
-        nex: state.nex - cost,
-        mintedNfts: [...state.mintedNfts, newNft],
+        xnt: state.xnt - cost,
+        tokens: [...state.tokens, newToken],
         mintCounts: newMintCounts,
+        globalMintCounts: newGlobalCounts,
+        nextSerials: newSerials,
         _rev: state._rev + 1,
       };
     }
 
-    case "BURN_NFT": {
-      const nftIndex = state.mintedNfts.findIndex(
-        n => n.prestige === action.prestigeLvl && n.seed === action.seed
+    case "BURN_TOKEN": {
+      const tokenIndex = state.tokens.findIndex(
+        t => t.prestige === action.prestigeLvl && t.seed === action.seed
       );
-      if (nftIndex === -1) return state;
-      const newNfts = [...state.mintedNfts];
-      newNfts.splice(nftIndex, 1);
+      if (tokenIndex === -1) return state;
+      const newTokens = [...state.tokens];
+      newTokens.splice(tokenIndex, 1);
       const lvl = action.prestigeLvl;
       const newCounts = { ...state.mintCounts };
       newCounts[lvl] = (newCounts[lvl] || 0) - 1;
       if (newCounts[lvl] <= 0) delete newCounts[lvl];
       return {
         ...state,
-        mintedNfts: newNfts,
+        tokens: newTokens,
         mintCounts: newCounts,
-        tokens: { ...state.tokens, [lvl]: (state.tokens[lvl] || 0) + 1 },
+        tokenPortfolio: { ...state.tokenPortfolio, [lvl]: (state.tokenPortfolio[lvl] || 0) + 1 },
         _rev: state._rev + 1,
       };
     }
 
     case "FORGE": {
-      const result = tryForge(state.mintedNfts);
+      const result = tryForge(state.tokens);
       if (!result.forged) return state;
-      // Decrement mintCounts for consumed prestige levels
       const newCounts = { ...state.mintCounts };
       for (const consumed of result.consumed) {
         const lvl = consumed.prestige;
@@ -191,7 +202,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       }
       return {
         ...state,
-        mintedNfts: [...result.remaining, result.produced],
+        tokens: [...result.remaining, result.produced],
         mintCounts: newCounts,
         _rev: state._rev + 1,
       };
@@ -211,17 +222,12 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       return { ...state, xntDevFeePaid: true, gameStarted: true, demoMode: false, _rev: state._rev + 1 };
     }
 
-    case "RESET_DAILY": {
-      return { ...state, dailyTaps: 0, dailyReset: action.now, _rev: state._rev + 1 };
-    }
-
     case "HYDRATE": {
       return { ...action.saved, _rev: state._rev + 1 };
     }
 
-    case "BUY_NFT": {
+    case "BUY_TOKEN": {
       const tier = action.prestige;
-      // Tiered dev fee per whitepaper: 0.5% P1-P20, 0.75% P21-P50, 1.0% P51-P80, 1.25% P81-P100
       let feeBps: number;
       if (tier <= 20) feeBps = 50;
       else if (tier <= 50) feeBps = 75;
@@ -230,15 +236,18 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       const fee = Math.ceil(action.price * feeBps / 10000);
       const totalPrice = action.price + fee;
       if (state.xnt < totalPrice) return state;
-      const newNft: NftEntry = {
+      const newToken: TokenEntry = {
         prestige: tier,
+        serial: 0, // Bought tokens don't have a serial (not minted by you)
         seed: action.seed,
         mintAddress: null,
+        lockedUntil: null,
+        lockTermDays: 0,
       };
       return {
         ...state,
         xnt: state.xnt - totalPrice,
-        mintedNfts: [...state.mintedNfts, newNft],
+        tokens: [...state.tokens, newToken],
         marketDevFeePool: (state.marketDevFeePool || 0) + fee,
         _rev: state._rev + 1,
       };
@@ -267,6 +276,78 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       };
     }
 
+    // ─── XEN Token Actions ───────────────────────────────────────
+
+    case "LOCK_TOKEN": {
+      const idx = state.tokens.findIndex(t => t.seed === action.seed);
+      if (idx === -1) return state;
+      if (state.tokens[idx].lockedUntil) return state; // Already locked
+      if (action.termDays <= 0) return state;
+      const now = action.now;
+      const unlockAt = now + action.termDays * 86400_000;
+      const newTokens = [...state.tokens];
+      newTokens[idx] = {
+        ...newTokens[idx],
+        lockedUntil: unlockAt,
+        lockTermDays: action.termDays,
+      };
+      return {
+        ...state,
+        tokens: newTokens,
+        _rev: state._rev + 1,
+      };
+    }
+
+    case "UNLOCK_TOKEN": {
+      const idx = state.tokens.findIndex(t => t.seed === action.seed);
+      if (idx === -1) return state;
+      const token = state.tokens[idx];
+      if (!token.lockedUntil) return state; // Not locked
+      if (action.now < token.lockedUntil) return state; // Still locked
+
+      // Calculate yield earned during lock
+      const daysLocked = Math.floor((action.now - (token.lockedUntil - (token.lockTermDays || 0) * 86400_000)) / 86400_000);
+      const globalCount = state.globalMintCounts[token.prestige] || 1;
+      const yieldPerDay = getTokenXenYield(token.prestige, token.serial, globalCount, token.lockTermDays || 0);
+      const totalYield = yieldPerDay * Math.max(1, daysLocked);
+
+      const newTokens = [...state.tokens];
+      newTokens[idx] = {
+        ...newTokens[idx],
+        lockedUntil: null,
+        lockTermDays: 0,
+      };
+      return {
+        ...state,
+        tokens: newTokens,
+        xnt: state.xnt + totalYield,
+        totalYieldClaimed: state.totalYieldClaimed + totalYield,
+        _rev: state._rev + 1,
+      };
+    }
+
+    case "CLAIM_YIELD": {
+      // Claim yield from all unlocked tokens that have been locked
+      let totalYield = 0;
+      const newTokens = state.tokens.map(t => {
+        if (!t.lockedUntil || action.now < t.lockedUntil) return t;
+        // This token's lock expired — auto-unlock and claim
+        const daysLocked = Math.floor((action.now - (t.lockedUntil - (t.lockTermDays || 0) * 86400_000)) / 86400_000);
+        const globalCount = state.globalMintCounts[t.prestige] || 1;
+        const yieldPerDay = getTokenXenYield(t.prestige, t.serial, globalCount, t.lockTermDays || 0);
+        totalYield += yieldPerDay * Math.max(1, daysLocked);
+        return { ...t, lockedUntil: null, lockTermDays: 0 };
+      });
+      if (totalYield <= 0) return state;
+      return {
+        ...state,
+        tokens: newTokens,
+        xnt: state.xnt + totalYield,
+        totalYieldClaimed: state.totalYieldClaimed + totalYield,
+        _rev: state._rev + 1,
+      };
+    }
+
     default:
       return state;
   }
@@ -282,7 +363,6 @@ export function saveGame(state: GameState): void {
 
 export function loadGame(): GameState | null {
   try {
-    // Try new versioned key first
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
@@ -292,7 +372,6 @@ export function loadGame(): GameState | null {
       }
       return parsed as GameState;
     }
-    // Fallback: migrate from old key
     const old = localStorage.getItem("void-protocol-save");
     if (old) {
       localStorage.removeItem("void-protocol-save");

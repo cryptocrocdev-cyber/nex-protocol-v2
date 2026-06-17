@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { getPrestigeBadgePath, PRESTIGE_NAMES, PRESTIGE_TICKERS } from "@/lib/void";
-import type { NftEntry } from "@/lib/gameEngine";
+import type { TokenEntry } from "@/lib/gameEngine";
 import type {
   MarketplaceListing, TradeRecord, Offer, TxUpdate,
   MarketplaceEngine,
@@ -11,13 +11,13 @@ import { getMarketplaceEngine } from "@/lib/marketplaceEngine";
 interface MarketplaceProps {
   marketplaceListings: MarketplaceListing[];
   /** @deprecated unused — engine handles listing */
-  onListNft?: (nft: NftEntry, price: number) => void;
+  onListNft?: (nft: TokenEntry, price: number) => void;
   /** @deprecated unused — engine handles buying */
   onBuyNft?: (listing: MarketplaceListing) => void;
   /** @deprecated unused — engine handles cancellation */
   onCancelListing?: (listingId: string) => void;
   walletAddress: string | null;
-  mintedNfts: NftEntry[];
+  mintedNfts: TokenEntry[];
   xntBalance: number;
   txPending?: boolean;
   engine?: MarketplaceEngine;

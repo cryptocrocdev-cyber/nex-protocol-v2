@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════
-   voidSdk.ts — Lightweight on-chain SDK for Prestige Protocol
+   voidSdk.ts — Lightweight on-chain SDK for NEX Protocol
    Matches deployed IDL program 6mW4... on X1 testnet.
    Seeds: protocol_state, user_state, burn_vault, prestige_medal, prestige_nft
    ═══════════════════════════════════════════════════════════════ */

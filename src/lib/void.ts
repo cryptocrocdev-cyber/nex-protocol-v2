@@ -1,4 +1,4 @@
-// 🔥 Prestige Protocol — EVM Cancer Removed
+// 🔥 NEX Protocol V5 — EVM Cancer Removed
 // No global counters, no shared vault pool, no O(n) RPC loops, no tick-on-mount
 
 import { Connection, PublicKey, SystemProgram, LAMPORTS_PER_SOL } from "@solana/web3.js";

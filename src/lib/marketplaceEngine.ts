@@ -1,5 +1,5 @@
 /**
- * MarketplaceEngine — abstract marketplace layer for Prestige Protocol
+ * MarketplaceEngine — abstract marketplace layer for NEX Protocol
  *
  * Current: MockMarketplaceEngine (localStorage with simulated delays)
  * Future:  OnchainMarketplaceEngine (Solana Anchor program, SPL transfers)
@@ -8,7 +8,7 @@
  * To go on-chain: implement OnchainMarketplaceEngine → swap one import.
  */
 
-import type { NftEntry } from "@/lib/gameEngine";
+import type { TokenEntry } from "@/lib/gameEngine";
 
 /* ═══════════════════════════════════════════════════════════════
    TYPES

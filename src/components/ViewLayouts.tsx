@@ -5,10 +5,10 @@ import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import type { GameState } from "@/lib/gameState";
 import { getPrestigeBadgePath, PRESTIGE_NAMES, PRESTIGE_TICKERS, PRESTIGE_COLORS } from "@/lib/void";
 import PrestigeGallery from "@/components/PrestigeGallery";
-import { NEX_PER_TAP, LP_MILESTONES, getLpChallengeInfo } from "@/lib/gameEngine";
+import { LP_MILESTONES, getLpChallengeInfo, getTokenXenYield, getMintCost, getUnlockThreshold } from "@/lib/gameEngine";
 import Marketplace from "@/components/Marketplace";
 import type { MarketplaceListing } from "@/lib/marketplaceEngine";
-import type { NftEntry } from "@/lib/gameEngine";
+import type { TokenEntry } from "@/lib/gameEngine";
 
 const BLUE = "#0066ff";
 const BLUE_LIGHT = "#4488ff";
@@ -47,10 +47,13 @@ interface LayoutProps {
   orbFlash: number;
   bottomTabs: readonly { key: string; label: string; title: string }[];
   marketplaceListings: MarketplaceListing[];
-  onListNft: (nft: NftEntry, price: number) => void;
+  onListNft: (nft: TokenEntry, price: number) => void;
   onBuyNft: (listing: MarketplaceListing) => void;
   onCancelListing: (listingId: string) => void;
   handleProvideLp: (prestige: number) => void;
+  handleLockToken: (seed: number, termDays: number) => void;
+  handleUnlockToken: (seed: number) => void;
+  handleClaimAllYield: () => void;
 }
 
 /* ── Shared theme classes ── */
@@ -70,7 +73,7 @@ const theme = {
    ═══════════════════════════════════════════════════════════════ */
 
 function INFTDetailModal({ nft, onClose, onBurn, onAddMetadata, onList, walletAddress }: {
-  nft: NftEntry;
+  nft: TokenEntry;
   onClose: () => void;
   onBurn: (lvl: number, seed: number) => void;
   onAddMetadata: (lvl: number, seed: number, mintAddress: string) => void;
@@ -201,23 +204,24 @@ export function MobileLayout({
   orbRef, effectsRef, orbFlash,
   bottomTabs,
   marketplaceListings, onListNft, onBuyNft, onCancelListing, handleProvideLp,
+  handleLockToken, handleUnlockToken, handleClaimAllYield,
 }: LayoutProps) {
   // ── iNFT detail modal state (shared across tabs) ──
-  const [selectedNft, setSelectedNft] = React.useState<NftEntry | null>(null);
+  const [selectedNft, setSelectedNft] = React.useState<TokenEntry | null>(null);
 
   return (
     <div className="flex-1 overflow-y-auto pb-24 relative z-10" style={{ background: BG_DARK }}>
       <div ref={effectsRef} className="absolute inset-0 pointer-events-none z-50" />
 
-      {/* Mobile NEX logo header */}
+      {/* Mobile XNT logo header */}
       <div className="flex items-center justify-center py-2 px-4 border-b" style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
-        <img src="/nex-logo.jpg" alt="NEX" className="h-6 w-auto rounded" />
+        <img src="/nex-logo.jpg" alt="XNT" className="h-6 w-auto rounded" />
       </div>
 
       {selectedNft && (
         <INFTDetailModal nft={selectedNft} onClose={() => setSelectedNft(null)} onBurn={handleBurnOne} onAddMetadata={handleAddMetadata}
           onList={(lvl, seed, price) => {
-            onListNft({ prestige: lvl, seed, mintAddress: null }, price);
+            onListNft({ prestige: lvl, seed, serial: 0, mintAddress: null }, price);
           }}
           walletAddress={walletAddress}
         />
@@ -252,7 +256,7 @@ export function MobileLayout({
         />
       )}
 
-      {tab === "tokens" && state.tokens && (
+      {tab === "tokens" && state.tokens && state.tokens.length >= 0 && (
         <div id="nex-tokens" className="rounded-xl p-6 border space-y-4" style={{ background: BG_CARD, borderColor: 'rgba(255,255,255,0.05)' }}>
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-bold" style={{ color: BLUE }}>🪙 Token Portfolio</h2>
@@ -263,29 +267,35 @@ export function MobileLayout({
               onMouseOut={e => { e.currentTarget.style.borderColor = 'rgba(0,200,255,0.1)'; e.currentTarget.style.color = 'rgba(0,200,255,0.6)'; }}
             >📊 X1 Screener ↗</a>
           </div>
-          {Object.keys(state.tokens).length === 0 ? (
+          {state.tokens.length === 0 ? (
             <p className="text-[10px] text-gray-600 py-3 text-center">No tokens yet. Mint an iNFT, then burn it.</p>
           ) : (
             <div className="grid grid-cols-2 gap-2 max-h-72 overflow-y-auto pr-1">
-              {Object.entries(state.tokens).sort(([a], [b]) => Number(a) - Number(b)).map(([lvl, count]) => {
-                const idx = Number(lvl) - 1;
-                const color = PRESTIGE_COLORS[idx] ?? BLUE;
-                return (
-                  <div key={lvl} className="rounded-lg border p-2" style={{ background: `${color}06`, borderColor: `${color}20` }}>
-                    <div className="flex items-center gap-2 mb-1.5">
-                      <img src={getPrestigeBadgePath(Number(lvl))} alt={`P${lvl}`} className="w-7 h-7 rounded-full object-cover" />
-                      <div className="min-w-0 flex-1">
-                        <p className="text-[10px] font-medium text-gray-200 truncate">{PRESTIGE_NAMES[idx] ?? "UNKNOWN"}</p>
-                        <p className="text-[8px]" style={{ color: `${color}88` }}>{PRESTIGE_TICKERS[idx] ?? "???"} · P{lvl}</p>
+              {(() => {
+                const levelCounts: Record<number, number> = {};
+                for (const t of state.tokens) {
+                  levelCounts[t.prestige] = (levelCounts[t.prestige] || 0) + 1;
+                }
+                return Object.entries(levelCounts).sort(([a], [b]) => Number(a) - Number(b)).map(([lvl, count]) => {
+                  const idx = Number(lvl) - 1;
+                  const color = PRESTIGE_COLORS[idx] ?? BLUE;
+                  return (
+                    <div key={lvl} className="rounded-lg border p-2" style={{ background: `${color}06`, borderColor: `${color}20` }}>
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <img src={getPrestigeBadgePath(Number(lvl))} alt={`P${lvl}`} className="w-7 h-7 rounded-full object-cover" />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[10px] font-medium text-gray-200 truncate">{PRESTIGE_NAMES[idx] ?? "UNKNOWN"}</p>
+                          <p className="text-[8px]" style={{ color: `${color}88` }}>{PRESTIGE_TICKERS[idx] ?? "???"} · P{lvl}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-bold" style={{ color }}>{count}x</span>
+                        <span className="text-[8px]" style={{ color: TEXT_SECONDARY }}>— XN</span>
                       </div>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-bold" style={{ color }}>{count}x</span>
-                      <span className="text-[8px]" style={{ color: TEXT_SECONDARY }}>— XN</span>
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                });
+              })()}
             </div>
           )}
         </div>
@@ -316,7 +326,7 @@ export function MobileLayout({
             onBuyNft={onBuyNft}
             onCancelListing={onCancelListing}
             walletAddress={walletAddress}
-            mintedNfts={state.mintedNfts}
+            mintedNfts={state.tokens}
             xntBalance={state.xnt}
           />
         </div>
@@ -361,16 +371,17 @@ export function DesktopLayout({
   orbRef, effectsRef, orbFlash,
   bottomTabs,
   marketplaceListings, onListNft, onBuyNft, onCancelListing, handleProvideLp,
+  handleLockToken, handleUnlockToken, handleClaimAllYield,
 }: LayoutProps) {
   // ── iNFT detail modal state ──
-  const [selectedNft, setSelectedNft] = React.useState<NftEntry | null>(null);
+  const [selectedNft, setSelectedNft] = React.useState<TokenEntry | null>(null);
 
   return (
     <>
       {selectedNft && (
         <INFTDetailModal nft={selectedNft} onClose={() => setSelectedNft(null)} onBurn={handleBurnOne} onAddMetadata={handleAddMetadata}
           onList={(lvl, seed, price) => {
-            onListNft({ prestige: lvl, seed, mintAddress: null }, price);
+            onListNft({ prestige: lvl, seed, serial: 0, mintAddress: null }, price);
           }}
           walletAddress={walletAddress}
         />
@@ -400,7 +411,7 @@ export function DesktopLayout({
               style={{ background: 'radial-gradient(circle, rgba(0,102,255,0.3), transparent)' }}
             />
             <div className="flex items-center gap-2 relative">
-              <img src="/nex-logo.jpg" alt="NEX" className="h-7 w-auto rounded" />
+              <img src="/nex-logo.jpg" alt="XNT" className="h-7 w-auto rounded" />
               <span className="text-[7px] px-1.5 py-0.5 rounded-full uppercase tracking-widest font-medium"
                 style={{
                   background: 'linear-gradient(135deg, rgba(255,184,0,0.15), rgba(255,184,0,0.05))',
@@ -438,8 +449,8 @@ export function DesktopLayout({
             <div className="flex items-center gap-4 text-xs relative">
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg" style={{ background: 'rgba(0,102,255,0.06)', border: '1px solid rgba(0,102,255,0.08)' }}>
                 <span className="text-[11px]" style={{ color: BLUE }}>💎</span>
-                <span className="text-sm font-semibold" style={{ color: '#fff' }}>{state.nex.toLocaleString()}</span>
-                <span className="text-[9px] font-medium uppercase tracking-wider" style={{ color: `${BLUE}99` }}>NEX</span>
+                <span className="text-sm font-semibold" style={{ color: '#fff' }}>{state.xnt.toLocaleString()}</span>
+                <span className="text-[9px] font-medium uppercase tracking-wider" style={{ color: `${BLUE}99` }}>XNT</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
@@ -500,7 +511,7 @@ export function DesktopLayout({
                   <span className={`relative text-4xl mb-1 transition-all duration-150 ${orbFlash ? 'scale-125' : ''}`}
                     style={{ filter: orbFlash ? `drop-shadow(0 0 12px ${BLUE_GLOW})` : `drop-shadow(0 0 8px ${BLUE_GLOW_WEAK})`, color: TEXT_PRIMARY }}>✦</span>
                   <span className={`relative text-xs font-light tracking-[0.2em] uppercase transition-all duration-300 ${orbFlash ? 'text-white/90' : ''}`} style={{ color: orbFlash ? 'rgba(255,255,255,0.9)' : `${BLUE}99` }}>tap</span>
-                  <span className="relative text-[10px] font-mono mt-0.5 transition-all duration-300" style={{ color: orbFlash ? BLUE_LIGHT : `${BLUE}66` }}>+{NEX_PER_TAP * nexMult} NEX</span>
+                  <span className="relative text-[10px] font-mono mt-0.5 transition-all duration-300" style={{ color: orbFlash ? BLUE_LIGHT : `${BLUE}66` }}>+0.001 XNT</span>
                   <div className="absolute bottom-0 left-[15%] right-[15%] h-[2px] rounded-full transition-all duration-200" style={{ background: `linear-gradient(90deg, transparent, ${BLUE}, transparent)`, opacity: orbFlash ? 1 : 0.4 }} />
                 </div>
               </button>
@@ -532,16 +543,16 @@ export function DesktopLayout({
               {state.prestige < 100 && (
                 <div className="text-center">
                   <p className="text-[10px] text-gray-600 mb-1">
-                    Cost: {prestigeCost.toLocaleString()} NEX
+                    Cost: {prestigeCost.toLocaleString()} XNT
                   </p>
                   <button onClick={handlePrestige}
-                    disabled={state.nex < prestigeCost}
+                    disabled={state.xnt < prestigeCost}
                     className="text-xs px-6 py-2 rounded-full transition-all border"
                     style={{ 
-                      background: state.nex >= prestigeCost ? `${BLUE}1A` : 'rgba(255,255,255,0.03)',
-                      borderColor: state.nex >= prestigeCost ? `${BLUE}44` : 'rgba(255,255,255,0.08)',
-                      color: state.nex >= prestigeCost ? BLUE : 'rgba(255,255,255,0.2)',
-                      cursor: state.nex >= prestigeCost ? 'pointer' : 'not-allowed'
+                      background: state.xnt >= prestigeCost ? `${BLUE}1A` : 'rgba(255,255,255,0.03)',
+                      borderColor: state.xnt >= prestigeCost ? `${BLUE}44` : 'rgba(255,255,255,0.08)',
+                      color: state.xnt >= prestigeCost ? BLUE : 'rgba(255,255,255,0.2)',
+                      cursor: state.xnt >= prestigeCost ? 'pointer' : 'not-allowed'
                     }}
                   >
                     🔄 Prestige → P{state.prestige + 1}
@@ -571,21 +582,21 @@ export function DesktopLayout({
                   {state.prestige < 1 ? "🔒 Prestige to unlock" : (state.mintCounts[state.prestige] || 0) >= (Math.max(1, 100 - state.prestige)) ? "✅ All minted" : "🎨 Mint iNFT"}
                 </button>
               </div>
-              {state.mintedNfts.length >= 3 && (
+              {state.tokens.length >= 3 && (
                 <div>
                   <p className="text-[10px] text-gray-600">Forge: 3 iNFTs → next prestige level</p>
-                  <p className="text-[9px] text-gray-600 mb-1">{state.mintedNfts.length} available</p>
+                  <p className="text-[9px] text-gray-600 mb-1">{state.tokens.length} available</p>
                   <button onClick={handleForge}
                     className="w-full text-xs py-2 rounded-xl border"
                     style={{ background: 'rgba(255,184,0,0.08)', borderColor: 'rgba(255,184,0,0.25)', color: '#fbbf24' }}
                   >🔨 Forge (3 → next level)</button>
                 </div>
               )}
-              {state.mintedNfts.length > 0 && (
+              {state.tokens.length > 0 && (
                 <div>
-                  <h3 className="text-xs font-medium text-gray-400 mb-2">Your iNFTs ({state.mintedNfts.length})</h3>
+                  <h3 className="text-xs font-medium text-gray-400 mb-2">Your iNFTs ({state.tokens.length})</h3>
                   <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-2">
-                    {state.mintedNfts.map((nft, i) => (
+                    {state.tokens.map((nft: TokenEntry, i: number) => (
                       <div key={i} data-inft-card="true" onClick={() => setSelectedNft(nft)} className="rounded-lg border p-2 text-center relative group cursor-pointer hover:border-opacity-50 transition-all" style={{ background: `${BG_DARK}66`, borderColor: 'rgba(255,255,255,0.06)' }}>
                         <img
                           src={getPrestigeBadgePath(nft.prestige)}
@@ -629,8 +640,8 @@ export function DesktopLayout({
                     </div>
                   )}
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-gray-400">NEX Balance</span>
-                    <span className="text-gray-200">{state.nex.toLocaleString()} NEX</span>
+                    <span className="text-gray-400">XNT Balance</span>
+                    <span className="text-gray-200">{state.xnt.toLocaleString()} XNT</span>
                   </div>
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-gray-400">Prestige</span>
@@ -638,7 +649,7 @@ export function DesktopLayout({
                   </div>
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-gray-400">iNFTs Minted</span>
-                    <span className="text-gray-200">{state.mintedNfts.length}</span>
+                    <span className="text-gray-200">{state.tokens.length}</span>
                   </div>
                   <div className="text-center pt-2">
                     <button onClick={walletDisconnect}
@@ -684,11 +695,11 @@ export function DesktopLayout({
                   <div className="grid grid-cols-3 gap-2">
                     <div className="rounded-lg border p-2 text-center" style={{ background: `${BLUE}06`, borderColor: `${BLUE}15` }}>
                       <p className="text-[9px]" style={{ color: TEXT_SECONDARY }}>Tokens Held</p>
-                      <p className="text-lg font-bold" style={{ color: BLUE }}>{Object.keys(state.tokens).length}</p>
+                      <p className="text-lg font-bold" style={{ color: BLUE }}>{state.tokens.length}</p>
                     </div>
                     <div className="rounded-lg border p-2 text-center" style={{ background: `${BLUE}06`, borderColor: `${BLUE}15` }}>
                       <p className="text-[9px]" style={{ color: TEXT_SECONDARY }}>Total Supply</p>
-                      <p className="text-lg font-bold" style={{ color: BLUE }}>{Object.values(state.tokens as Record<number, number>).reduce((a: number, b: number) => a + b, 0)}</p>
+                      <p className="text-lg font-bold" style={{ color: BLUE }}>{state.tokens.length}</p>
                     </div>
                     <div className="rounded-lg border p-2 text-center" style={{ background: `${BLUE}06`, borderColor: `${BLUE}15` }}>
                       <p className="text-[9px]" style={{ color: TEXT_SECONDARY }}>Est. Value</p>
@@ -697,34 +708,40 @@ export function DesktopLayout({
                   </div>
                   {/* Token catalog */}
                   <div className="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto pr-1">
-                    {Object.entries(state.tokens).sort(([a], [b]) => Number(a) - Number(b)).map(([lvl, count]) => {
-                      const idx = Number(lvl) - 1;
-                      const color = PRESTIGE_COLORS[idx] ?? BLUE;
-                      const provided = !!state.lpProvided?.[Number(lvl)];
-                      return (
-                        <div key={lvl} className="rounded-lg border p-2" style={{ background: `${color}06`, borderColor: provided ? `${color}66` : `${color}20` }}>
-                          <div className="flex items-center gap-2 mb-1.5">
-                            <img src={getPrestigeBadgePath(Number(lvl))} alt={`P${lvl}`} className="w-7 h-7 rounded-full object-cover" />
-                            <div className="min-w-0 flex-1">
-                              <p className="text-[10px] font-medium text-gray-200 truncate">{PRESTIGE_NAMES[idx] ?? "UNKNOWN"}</p>
-                              <p className="text-[8px]" style={{ color: `${color}88` }}>{PRESTIGE_TICKERS[idx] ?? "???"} · P{lvl}</p>
+                    {(() => {
+                      const levelCounts: Record<number, number> = {};
+                      for (const t of state.tokens) {
+                        levelCounts[t.prestige] = (levelCounts[t.prestige] || 0) + 1;
+                      }
+                      return Object.entries(levelCounts).sort(([a], [b]) => Number(a) - Number(b)).map(([lvl, count]) => {
+                        const idx = Number(lvl) - 1;
+                        const color = PRESTIGE_COLORS[idx] ?? BLUE;
+                        const provided = !!state.lpProvided?.[Number(lvl)];
+                        return (
+                          <div key={lvl} className="rounded-lg border p-2" style={{ background: `${color}06`, borderColor: provided ? `${color}66` : `${color}20` }}>
+                            <div className="flex items-center gap-2 mb-1.5">
+                              <img src={getPrestigeBadgePath(Number(lvl))} alt={`P${lvl}`} className="w-7 h-7 rounded-full object-cover" />
+                              <div className="min-w-0 flex-1">
+                                <p className="text-[10px] font-medium text-gray-200 truncate">{PRESTIGE_NAMES[idx] ?? "UNKNOWN"}</p>
+                                <p className="text-[8px]" style={{ color: `${color}88` }}>{PRESTIGE_TICKERS[idx] ?? "???"} · P{lvl}</p>
+                              </div>
+                              {provided && <span className="text-[8px] px-1.5 py-0.5 rounded-full" style={{ background: `${color}20`, color }}>LP✓</span>}
                             </div>
-                            {provided && <span className="text-[8px] px-1.5 py-0.5 rounded-full" style={{ background: `${color}20`, color }}>LP✓</span>}
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm font-bold" style={{ color }}>{count}x</span>
+                              <span className="text-[8px]" style={{ color: TEXT_SECONDARY }}>— XN</span>
+                            </div>
+                            <div className="mt-1 h-1.5 rounded-full overflow-hidden" style={{ background: `${color}10` }}>
+                              <div className="h-full rounded-full transition-all" style={{
+                                width: `${Math.min(100, count * 8 + 10)}%`,
+                                background: `linear-gradient(90deg, ${color}, ${color}88)`,
+                                boxShadow: `0 0 6px ${color}44`
+                              }} />
+                            </div>
                           </div>
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm font-bold" style={{ color }}>{count}x</span>
-                            <span className="text-[8px]" style={{ color: TEXT_SECONDARY }}>— XN</span>
-                          </div>
-                          <div className="mt-1 h-1.5 rounded-full overflow-hidden" style={{ background: `${color}10` }}>
-                            <div className="h-full rounded-full transition-all" style={{
-                              width: `${Math.min(100, count * 8 + 10)}%`,
-                              background: `linear-gradient(90deg, ${color}, ${color}88)`,
-                              boxShadow: `0 0 6px ${color}44`
-                            }} />
-                          </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      });
+                    })()}
                   </div>
                   {/* LP Challenge removed — lives in the Pools tab now */}
                 </>
@@ -752,7 +769,7 @@ export function DesktopLayout({
                 onBuyNft={onBuyNft}
                 onCancelListing={onCancelListing}
                 walletAddress={walletAddress}
-                mintedNfts={state.mintedNfts}
+                mintedNfts={state.tokens}
                 xntBalance={state.xnt}
               />
             </div>
@@ -810,9 +827,9 @@ function MobileTapTab({
         )}
       </div>
 
-      {/* NEX counter — big and centered */}
+      {/* XNT counter — big and centered */}
       <div className="text-center mb-2">
-        <h1 className="text-3xl md:text-4xl font-bold" style={{ color: BLUE }}>💎 {state.nex.toLocaleString()}</h1>
+        <h1 className="text-3xl md:text-4xl font-bold" style={{ color: BLUE }}>💎 {state.xnt.toLocaleString()}</h1>
         <p className="text-xs text-gray-500 mt-0.5">P{state.prestige} {state.prestige >= 100 ? '🏆' : `/ 100`}</p>
       </div>
 
@@ -846,7 +863,7 @@ function MobileTapTab({
             <span className={`relative text-4xl mb-1 transition-all duration-150 ${orbFlash ? 'scale-125' : ''}`}
               style={{ filter: orbFlash ? `drop-shadow(0 0 12px ${BLUE_GLOW})` : `drop-shadow(0 0 8px ${BLUE_GLOW_WEAK})`, color: TEXT_PRIMARY }}>✦</span>
             <span className={`relative text-xs font-light tracking-[0.2em] uppercase transition-all duration-300 ${orbFlash ? 'text-white/90' : ''}`} style={{ color: orbFlash ? 'rgba(255,255,255,0.9)' : `${BLUE}99` }}>tap</span>
-            <span className="relative text-[10px] font-mono mt-0.5 transition-all duration-300" style={{ color: orbFlash ? BLUE_LIGHT : `${BLUE}66` }}>+{NEX_PER_TAP * nexMult} NEX</span>
+            <span className="relative text-[10px] font-mono mt-0.5 transition-all duration-300" style={{ color: orbFlash ? BLUE_LIGHT : `${BLUE}66` }}>+0.001 XNT</span>
             <div className="absolute bottom-0 left-[15%] right-[15%] h-[2px] rounded-full transition-all duration-200" style={{ background: `linear-gradient(90deg, transparent, ${BLUE}, transparent)`, opacity: orbFlash ? 1 : 0.4 }} />
           </div>
         </button>
@@ -879,19 +896,19 @@ function MobileTapTab({
       {state.prestige < 100 && (
         <div className="w-full max-w-xs text-center">
           <p className="text-[10px] text-gray-600 mb-1">
-            Cost: {prestigeCost.toLocaleString()} NEX
+            Cost: {prestigeCost.toLocaleString()} XNT
           </p>
           <button onClick={handlePrestige}
-            disabled={state.nex < prestigeCost}
+            disabled={state.xnt < prestigeCost}
             className="w-full text-xs py-3 rounded-full transition-all border"
             style={{ 
-              background: state.nex >= prestigeCost ? `${BLUE}1A` : 'rgba(255,255,255,0.03)',
-              borderColor: state.nex >= prestigeCost ? `${BLUE}44` : 'rgba(255,255,255,0.08)',
-              color: state.nex >= prestigeCost ? BLUE : 'rgba(255,255,255,0.2)',
-              cursor: state.nex >= prestigeCost ? 'pointer' : 'not-allowed'
+              background: state.xnt >= prestigeCost ? `${BLUE}1A` : 'rgba(255,255,255,0.03)',
+              borderColor: state.xnt >= prestigeCost ? `${BLUE}44` : 'rgba(255,255,255,0.08)',
+              color: state.xnt >= prestigeCost ? BLUE : 'rgba(255,255,255,0.2)',
+              cursor: state.xnt >= prestigeCost ? 'pointer' : 'not-allowed'
             }}
           >
-            {state.nex >= prestigeCost ? `🔄 Prestige → P${state.prestige + 1}` : `❌ Need ${(prestigeCost - state.nex).toLocaleString()} more NEX`}
+            {state.xnt >= prestigeCost ? `🔄 Prestige → P${state.prestige + 1}` : `❌ Need ${(prestigeCost - state.xnt).toLocaleString()} more XNT`}
           </button>
         </div>
       )}
@@ -931,13 +948,13 @@ function MobilePrestigeTab({ state, isDemo, handleMint, handleForge, handleBurnO
       </div>
 
       {/* Forge card */}
-      {state.mintedNfts.length >= 3 && (
+      {state.tokens.length >= 3 && (
         <div className="rounded-xl p-4 border" style={{ background: BG_CARD, borderColor: 'rgba(255,255,255,0.05)' }}>
           <div className="flex items-center justify-between mb-2">
             <p className="text-sm text-gray-200">Forge</p>
             <span className="text-[10px] text-gray-500">3 same-tier → next tier</span>
           </div>
-          <p className="text-[10px] text-gray-600 mb-3">Available: {state.mintedNfts.length} iNFTs</p>
+          <p className="text-[10px] text-gray-600 mb-3">Available: {state.tokens.length} iNFTs</p>
           <button onClick={handleForge}
             className="w-full text-xs py-3 rounded-xl border"
             style={{ background: 'rgba(255,184,0,0.08)', borderColor: 'rgba(255,184,0,0.25)', color: '#fbbf24' }}
@@ -946,11 +963,11 @@ function MobilePrestigeTab({ state, isDemo, handleMint, handleForge, handleBurnO
       )}
 
       {/* iNFT collection */}
-      {state.mintedNfts.length > 0 && (
+      {state.tokens.length > 0 && (
         <div>
-          <h3 className="text-sm font-medium text-gray-300 mb-3">Your iNFTs ({state.mintedNfts.length})</h3>
+          <h3 className="text-sm font-medium text-gray-300 mb-3">Your iNFTs ({state.tokens.length})</h3>
           <div className="grid grid-cols-3 gap-3">
-            {state.mintedNfts.map((nft: any, i: number) => (
+            {state.tokens.map((nft: any, i: number) => (
               <div key={i} data-inft-card="true" onClick={() => onSelectNft(nft)} className="rounded-lg border p-3 text-center relative group cursor-pointer hover:border-opacity-50 transition-all" style={{ background: `${BG_DARK}66`, borderColor: 'rgba(255,255,255,0.06)' }}>
                 <img
                   src={getPrestigeBadgePath(nft.prestige)}
@@ -986,9 +1003,9 @@ function MobilePrestigeTab({ state, isDemo, handleMint, handleForge, handleBurnO
 }
 
 function MobileWalletTab({ state, walletAddress, shortAddr, xntNativeBalance, onSelectNft }: any) {
-  const totalNfts = state.mintedNfts.length;
-  const totalTokens = Object.values(state.tokens as Record<number, number>).reduce((a: number, b: number) => a + b, 0);
-  const tokenTiers = Object.keys(state.tokens).length;
+  const totalNfts = state.tokens.length;
+  const totalTokens = state.tokens.length;
+  const tokenTiers = new Set(state.tokens.map((t: TokenEntry) => t.prestige)).size;
 
   return (
     <div className="px-4 pt-6 pb-4 space-y-5">
@@ -1051,7 +1068,13 @@ function MobileWalletTab({ state, walletAddress, shortAddr, xntNativeBalance, on
         <div>
           <h3 className="text-sm font-medium text-gray-300 mb-3">🪙 Token Catalog</h3>
           <div className="grid grid-cols-2 gap-2">
-            {Object.entries(state.tokens).sort(([a], [b]) => Number(a) - Number(b)).map(([lvl, count]: any) => {
+            {(() => {
+        // Group tokens by prestige level for display
+        const levelCounts: Record<number, number> = {};
+        for (const t of state.tokens) {
+          levelCounts[t.prestige] = (levelCounts[t.prestige] || 0) + 1;
+        }
+        return Object.entries(levelCounts).sort(([a], [b]) => Number(a) - Number(b)).map(([lvl, count]) => {
               const idx = Number(lvl) - 1;
               return (
                 <div key={lvl} className="rounded-lg border p-2 flex items-center gap-2" style={{ background: `${BLUE}08`, borderColor: `${BLUE}22` }}>
@@ -1063,7 +1086,7 @@ function MobileWalletTab({ state, walletAddress, shortAddr, xntNativeBalance, on
                   </div>
                 </div>
               );
-            })}
+            })})()}
           </div>
         </div>
       )}
@@ -1077,12 +1100,12 @@ function MobileWalletTab({ state, walletAddress, shortAddr, xntNativeBalance, on
       )}
 
       {/* Recent iNFTs */}
-      {state.mintedNfts.length > 0 && (
+      {state.tokens.length > 0 && (
         <div>
           <h3 className="text-sm font-medium text-gray-300 mb-3">🧊 Recent iNFTs</h3>
           <div className="space-y-2">
-            {state.mintedNfts.slice(-5).reverse().map((nft: any, i: number) => {
-              const realIndex = state.mintedNfts.length - 1 - i;
+            {state.tokens.slice(-5).reverse().map((nft: any, i: number) => {
+              const realIndex = state.tokens.length - 1 - i;
               const idx = nft.prestige - 1;
               return (
                 <div key={realIndex} onClick={() => onSelectNft(nft)} className="rounded-lg border p-2 flex items-center gap-2 cursor-pointer" style={{ background: BG_CARD, borderColor: 'rgba(255,255,255,0.05)' }}>
@@ -1210,7 +1233,7 @@ function LPChallengeSection({ lpProvided, tokens }: { lpProvided: Record<number,
       </div>
       <p className="text-[9px]" style={{ color: TEXT_SECONDARY }}>
         Provide LP for tokens to unlock bigger tap rewards.
-        {currentBoost > 1.0 && ` Active: 🌊×${currentBoost.toFixed(1)} NEX per tap!`}
+        {currentBoost > 1.0 && ` Active: 🌊×${currentBoost.toFixed(1)} XNT per tap!`}
       </p>
 
       {/* Milestone progress bar */}
@@ -1423,9 +1446,16 @@ function MobilePoolsTab({ lpProvided, xntBalance, onProvideLp }: { lpProvided: R
 }
 
 function MobileTokensTab({ state }: { state: any }) {
-  const totalTokens = Object.keys(state.tokens).length;
-  const totalSupply = Object.values(state.tokens as Record<number, number>).reduce((a: number, b: number) => a + b, 0);
+  const tokens = state.tokens as TokenEntry[];
+  const totalTokens = tokens.length;
   const { currentBoost } = getLpChallengeInfo(state.lpProvided ?? {});
+
+  // Group tokens by prestige level for display
+  const levelCounts: Record<number, number> = {};
+  for (const t of tokens) {
+    levelCounts[t.prestige] = (levelCounts[t.prestige] || 0) + 1;
+  }
+  const levelEntries = Object.entries(levelCounts).sort(([a], [b]) => Number(a) - Number(b));
 
   return (
     <div className="px-4 pt-6 pb-4 space-y-4">
@@ -1434,7 +1464,7 @@ function MobileTokensTab({ state }: { state: any }) {
         <p className="text-xs text-gray-500 mt-0.5">Burn iNFTs to earn prestige-specific tokens</p>
         {currentBoost > 1.0 && (
           <div className="inline-block mt-1.5 text-[9px] px-2.5 py-0.5 rounded-full" style={{ background: '#44ddff15', color: '#44ddff', border: '1px solid #44ddff25' }}>
-            🌊 LP boost active: ×{currentBoost.toFixed(1)} NEX per tap
+            🌊 LP boost active: ×{currentBoost.toFixed(1)} XNT per tap
           </div>
         )}
       </div>
@@ -1446,7 +1476,7 @@ function MobileTokensTab({ state }: { state: any }) {
         </div>
         <div className="rounded-lg border p-3 text-center" style={{ background: `${BLUE}06`, borderColor: `${BLUE}15` }}>
           <p className="text-[9px]" style={{ color: TEXT_SECONDARY }}>Supply</p>
-          <p className="text-xl font-bold" style={{ color: BLUE }}>{totalSupply}</p>
+          <p className="text-xl font-bold" style={{ color: BLUE }}>{totalTokens}</p>
         </div>
         <div className="rounded-lg border p-3 text-center" style={{ background: `${BLUE}06`, borderColor: `${BLUE}15` }}>
           <p className="text-[9px]" style={{ color: TEXT_SECONDARY }}>Value</p>
@@ -1460,7 +1490,7 @@ function MobileTokensTab({ state }: { state: any }) {
         </div>
       ) : (
         <div className="space-y-2 max-h-[420px] overflow-y-auto pr-1">
-          {Object.entries(state.tokens).sort(([a], [b]) => Number(a) - Number(b)).map(([lvl, count]: any) => {
+          {levelEntries.map(([lvl, count]) => {
             const idx = Number(lvl) - 1;
             const color = PRESTIGE_COLORS[idx] ?? BLUE;
             const name = PRESTIGE_NAMES[idx] ?? "UNKNOWN";

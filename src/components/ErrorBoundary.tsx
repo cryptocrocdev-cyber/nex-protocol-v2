@@ -23,7 +23,7 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error("Prestige Protocol Error:", error, errorInfo);
+    console.error("NEX Protocol Error:", error, errorInfo);
     this.setState({ error, errorInfo });
   }
 

@@ -3,9 +3,9 @@ import "./globals.css";
 import { WalletContextProvider } from "@/components/WalletContextProvider";
 
 export const metadata: Metadata = {
-  title: "Prestige Protocol — Reverse XEN on X1",
+  title: "NEX Protocol — Reverse XEN on X1",
   description:
-    "Prestige Protocol is the deflationary inverse of XEN: prestige, mint, burn, forge. 100 prestige tiers. No admin. Immutable.",
+    "NEX Protocol is the deflationary inverse of XEN: prestige, mint, burn, forge. 100 prestige tiers. No admin. Immutable.",
   keywords: ["Prestige", "NEX", "XEN", "X1", "burn", "deflationary", "crypto", "immutable"],
 };
 
