@@ -2,18 +2,27 @@
 import React, { useReducer, useCallback, useEffect, useRef, useState } from "react";
 import { useWallet, useConnection } from "@solana/wallet-adapter-react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
+import { PublicKey } from "@solana/web3.js";
 import { gameReducer, createInitialState, saveGame, loadGame, clearSave } from "@/lib/gameState";
 import type { GameState } from "@/lib/gameState";
-import { getMintCost, getUnlockThreshold, getTokenXenYield, getMaxMintsAtPrestige, getNextMilestone } from "@/lib/gameEngine";
-import type { TokenEntry } from "@/lib/gameEngine";
+import {
+  getBurnCost,
+  isTierExhausted,
+  getSupplyRemaining,
+  getSupplyPercent,
+  getSupplyPerTier,
+  getPrestigeLabel,
+  getPrestigeColor,
+  getNextMilestone,
+  MAX_PRESTIGE,
+  MILESTONES,
+} from "@/lib/gameEngine";
 import {
   MobileLayout,
   DesktopLayout,
 } from "@/components/ViewLayouts";
-import PrestigeGallery from "@/components/PrestigeGallery";
-import Marketplace from "@/components/Marketplace";
-import type { MarketplaceListing } from "@/lib/marketplaceEngine";
-import { getMarketplaceEngine } from "@/lib/marketplaceEngine";
+import { useNexProgram, getPrestigeMintPDA, getUserStatePDA, getAssociatedTokenAddress } from "@/lib/useNexProgram";
+import { NETWORK } from "@/lib/network";
 
 const BLUE = "#0066ff";
 const ACCENT = "#a78bfa";
@@ -22,10 +31,8 @@ const GOLD = "#fbbf24";
 const BOTTOM_TABS: { key: string; label: string; title: string }[] = [
   { key: "tap", label: "👆", title: "Tap" },
   { key: "prestige", label: "🏛️", title: "Prestige" },
-  { key: "pools", label: "🌊", title: "Pools" },
   { key: "tokens", label: "🪙", title: "Tokens" },
-  { key: "wallet", label: "👛", title: "Wallet" },
-  { key: "marketplace", label: "🏪", title: "Market" },
+  { key: "gallery", label: "📊", title: "Gallery" },
 ];
 
 export default function DemoApp() {
@@ -39,20 +46,15 @@ export default function DemoApp() {
   const orbRef = useRef<HTMLDivElement>(null);
 
   // ── X1 Wallet ──
-  const { publicKey: walletPubkey, connecting: walletConnecting, disconnect: walletDisconnect, sendTransaction, wallet } = useWallet();
+  const { publicKey: walletPubkey, connecting: walletConnecting, disconnect: walletDisconnect, connected } = useWallet();
   const { connection } = useConnection();
   const walletAddress = walletPubkey?.toBase58() ?? null;
   const shortAddr = walletAddress ? `${walletAddress.slice(0, 4)}...${walletAddress.slice(-4)}` : null;
-  const [xntFeeLoading, setXntFeeLoading] = React.useState(false);
-  const [xntNativeBalance, setXntNativeBalance] = React.useState<number | null>(null);
 
-  // ── Fetch native XNT balance ──
-  React.useEffect(() => {
-    if (!walletPubkey || !connection) { setXntNativeBalance(null); return; }
-    connection.getBalance(walletPubkey).then(bal => {
-      setXntNativeBalance(bal / 1_000_000_000);
-    }).catch(() => setXntNativeBalance(null));
-  }, [walletPubkey, connection]);
+  // ── On-chain program ──
+  const { program, initializing, initUser, tap: onChainTap, prestige: onChainPrestige } = useNexProgram();
+  const [txPending, setTxPending] = useState(false);
+  const [userTokens, setUserTokens] = useState<{ prestige: number; mint: string; balance: number }[]>([]);
 
   // ── View mode ──
   const [viewMode, setViewMode] = React.useState<"mobile" | "desktop">("mobile");
@@ -72,28 +74,6 @@ export default function DemoApp() {
     dispatch({ type: "START_DEMO" });
   }, []);
 
-  // ── Pay dev fee ──
-  const payXntFee = useCallback(async () => {
-    if (!walletPubkey || !connection || !sendTransaction) return;
-    setXntFeeLoading(true);
-    try {
-      const { SystemProgram } = await import("@solana/web3.js");
-      const ix = SystemProgram.transfer({
-        fromPubkey: walletPubkey,
-        toPubkey: new (await import("@solana/web3.js")).PublicKey("BQLB3NPHGRfibY23qTDbEYBuhZu2KsdiD3pbxuu8Fpxh"),
-        lamports: 10_000_000, // 0.01 XNT
-      });
-      const tx = new (await import("@solana/web3.js")).Transaction().add(ix);
-      const sig = await sendTransaction(tx, connection);
-      await connection.confirmTransaction(sig);
-      dispatch({ type: "PAY_DEV_FEE" });
-    } catch (err: any) {
-      console.error("Dev fee failed:", err);
-    } finally {
-      setXntFeeLoading(false);
-    }
-  }, [walletPubkey, connection, sendTransaction]);
-
   // ── Floating text effects ──
   const [floats, setFloats] = React.useState<Array<{ id: number; text: string; color: string; x: number; y: number }>>([]);
   const floatIdRef = useRef(0);
@@ -102,6 +82,33 @@ export default function DemoApp() {
     setFloats(prev => [...prev, { id, text, color, x: 20 + Math.random() * 60, y: 20 + Math.random() * 40 }]);
     setTimeout(() => setFloats(prev => prev.filter(f => f.id !== id)), 1200);
   }, []);
+
+  // ── Start on-chain game ──
+  const handleStartOnChain = useCallback(async () => {
+    if (!walletPubkey || !initUser) {
+      spawnFloat("❌ Wallet not connected or program not ready", "#ef4444");
+      return;
+    }
+    setTxPending(true);
+    try {
+      await initUser();
+      dispatch({ type: "START_DEMO" });
+      spawnFloat("✅ On-chain game started!", "#22c55e");
+    } catch (e: any) {
+      console.error("Start on-chain error:", e);
+      const msg = e.message || "unknown error";
+      if (msg.includes("0x1") || msg.includes("insufficient") || msg.includes("0 lamports")) {
+        spawnFloat("❌ Need test XN for gas — faucet: xolana.xen.network", "#ef4444");
+      } else if (msg.includes("already in use") || msg.includes("UserAlreadyInitialized")) {
+        dispatch({ type: "START_DEMO" });
+        spawnFloat("✅ Game resumed!", "#22c55e");
+      } else {
+        spawnFloat("❌ " + msg.slice(0, 70), "#ef4444");
+      }
+    } finally {
+      setTxPending(false);
+    }
+  }, [walletPubkey, initUser, spawnFloat]);
 
   // ── Hydrate from localStorage ──
   useEffect(() => {
@@ -114,237 +121,104 @@ export default function DemoApp() {
     if (state._rev > 0 && !state.demoMode) saveGame(state);
   }, [state, state._rev, state.demoMode]);
 
-  // ── Fetch marketplace listings ──
-  const [marketplaceListings, setMarketplaceListings] = React.useState<MarketplaceListing[]>([]);
-  useEffect(() => {
-    const engine = getMarketplaceEngine();
-    engine.getActiveListings().then(setMarketplaceListings).catch(() => {});
-  }, [state._rev]);
-
-  // ── Sync from X1 on connect ──
-  useEffect(() => {
-    if (!walletPubkey || !connection) return;
-    const fetchOnChain = async () => {
-      try {
-        const saved = loadGame();
-        if (saved) {
-          // Merge on-chain prestige count
-          const { PublicKey } = await import("@solana/web3.js");
-          const userPda = PublicKey.findProgramAddressSync(
-            [Buffer.from("user"), walletPubkey.toBytes()],
-            new PublicKey("FgQ86Z5vvoPEvduoxUjTuXSqLFMGpMra8MSzV3E5BjFo")
-          )[0];
-          const acc = await connection.getAccountInfo(userPda).catch(() => null);
-          if (acc) {
-            const data = acc.data;
-            const prestigeCount = data.readUInt32LE(8);
-            const merged: GameState = { ...saved, prestige: Math.max(saved.prestige, prestigeCount) };
-            dispatch({ type: "HYDRATE", saved: merged });
-          }
-        }
-      } catch {}
-    };
-    fetchOnChain();
-  }, [walletPubkey, connection]);
-
   // ── Orb flash ──
   const [orbFlash, setOrbFlash] = React.useState<number>(0);
-  const handleTap = useCallback((e: React.MouseEvent<HTMLButtonElement>) => {
-    dispatch({ type: "TAP", now: Date.now() });
-    spawnFloat(`+0.001 XNT`, "#00ff88");
-    setOrbFlash(v => v + 1);
-  }, [spawnFloat]);
 
-  // ── Prestige ──
+  // ── Tap handler ──
+  const lastTapRef = useRef(0);
+  const handleTap = useCallback(async (e: React.MouseEvent<HTMLButtonElement>) => {
+    const now = Date.now();
+    if (now - lastTapRef.current < 300) return;
+    lastTapRef.current = now;
+
+    if (isTierExhausted(state.supplyMinted, state.prestige)) {
+      spawnFloat(`❌ P${state.prestige} supply exhausted!`, "#ef4444");
+      return;
+    }
+
+    if (connected && onChainTap && !isDemo) {
+      // On-chain tap
+      setTxPending(true);
+      try {
+        await onChainTap();
+        dispatch({ type: "TAP" });
+        spawnFloat(`+1 P${state.prestige} Token`, getPrestigeColor(state.prestige));
+        setOrbFlash(v => v + 1);
+      } catch (e: any) {
+        spawnFloat(`❌ ${e.message?.slice(0, 40) || "TX failed"}`, "#ef4444");
+      } finally {
+        setTxPending(false);
+      }
+    } else {
+      // Demo tap
+      dispatch({ type: "TAP" });
+      spawnFloat(`+1 P${state.prestige} Token`, getPrestigeColor(state.prestige));
+      setOrbFlash(v => v + 1);
+    }
+  }, [state.prestige, state.supplyMinted, spawnFloat, connected, onChainTap, isDemo]);
+
+  // ── Prestige handler ──
   const handlePrestige = useCallback(async () => {
-    if (state.prestige >= 100) return;
-    const tokensAtLevel = state.tokens.filter(t => t.prestige === state.prestige).length;
-    const globalMintsAtLevel = state.globalMintCounts[state.prestige] || 0;
-    const threshold = getUnlockThreshold(state.prestige, globalMintsAtLevel);
-    if (tokensAtLevel < threshold) { spawnFloat(`❌ Need ${threshold} tokens at P${state.prestige} to prestige`, "#ef4444"); return; }
-    if (isDemo) {
+    if (state.prestige >= MAX_PRESTIGE) return;
+    const cost = getBurnCost(state.prestige);
+    if (state.tokens < cost) {
+      spawnFloat(`❌ Need ${cost} tokens to prestige (have ${state.tokens})`, "#ef4444");
+      return;
+    }
+
+    if (connected && onChainPrestige && !isDemo) {
+      // On-chain prestige → mints SPL token to wallet
+      setTxPending(true);
+      try {
+        const nextP = state.prestige + 1;
+        // prestige() auto-creates the mint + ATA + mints in one TX
+        await onChainPrestige(state.prestige);
+        dispatch({ type: "PRESTIGE" });
+        spawnFloat(`🔄 Prestiged! → P${nextP} 🪙 SPL minted!`, GOLD);
+        setOrbFlash(v => v + 1);
+      } catch (e: any) {
+        spawnFloat(`❌ ${e.message?.slice(0, 50) || "TX failed"}`, "#ef4444");
+      } finally {
+        setTxPending(false);
+      }
+    } else {
+      // Demo prestige
       dispatch({ type: "PRESTIGE" });
       spawnFloat(`🔄 Prestiged! → P${state.prestige + 1}`, GOLD);
-      return;
     }
-    if (!walletPubkey || !connection || !sendTransaction) {
-      spawnFloat("⚠️ Connect X1 Wallet to prestige", "#00ccff");
-      return;
-    }
-    try {
-      const { PublicKey, SystemProgram, Transaction } = await import("@solana/web3.js");
-      const devWallet = new PublicKey("BQLB3NPHGRfibY23qTDbEYBuhZu2KsdiD3pbxuu8Fpxh");
-      const ix = SystemProgram.transfer({
-        fromPubkey: walletPubkey,
-        toPubkey: devWallet,
-        lamports: 10_000_000,
-      });
-      const tx = new Transaction().add(ix);
-      const signature = await sendTransaction(tx, connection);
-      await connection.confirmTransaction(signature);
-      spawnFloat(`🔄 Prestiged! → P${state.prestige + 1} (0.01 XN)`, GOLD);
-      dispatch({ type: "PRESTIGE" });
-    } catch (err: any) {
-      console.error("Prestige tx failed:", err);
-      spawnFloat(err?.message?.includes("UserRejected") ? "🚫 Transaction cancelled" : "❌ Prestige failed — insufficient XN or transaction rejected", "#ef4444");
-    }
-  }, [state.prestige, state.tokens, state.globalMintCounts, isDemo, walletPubkey, sendTransaction, connection]);
+  }, [state.prestige, state.tokens, spawnFloat, connected, onChainPrestige, isDemo]);
 
-  // ── Mint ──
-  const handleMint = useCallback(async () => {
-    if (state.prestige < 1) return;
-    const maxMints = getMaxMintsAtPrestige(state.prestige);
-    const currentCount = state.mintCounts[state.prestige] || 0;
-    if (currentCount >= maxMints) { spawnFloat(`❌ P${state.prestige} fully minted (${maxMints}/${maxMints})`, "#ef4444"); return; }
-    if (state.xnt < getMintCost(state.prestige)) { spawnFloat(`❌ Need ${getMintCost(state.prestige).toFixed(4)} XNT to mint`, "#ef4444"); return; }
-    const seed = Math.floor(Math.random() * 1_000_000);
-    if (isDemo) {
-      dispatch({ type: "MINT", seed, mintAddress: `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}` });
-      spawnFloat(`🎨 Minted P${state.prestige} token! (-5,000 XNT)`, ACCENT);
-      return;
-    }
-    if (!walletPubkey || !connection || !sendTransaction) {
-      spawnFloat("⚠️ Connect X1 Wallet to mint", "#00ccff");
-      return;
-    }
-    try {
-      const { PublicKey, SystemProgram, Transaction } = await import("@solana/web3.js");
-      const devWallet = new PublicKey("BQLB3NPHGRfibY23qTDbEYBuhZu2KsdiD3pbxuu8Fpxh");
-      const ix = SystemProgram.transfer({
-        fromPubkey: walletPubkey,
-        toPubkey: devWallet,
-        lamports: 1_000_000, // 0.001 XN gas
-      });
-      const tx = new Transaction().add(ix);
-      const signature = await sendTransaction(tx, connection);
-      await connection.confirmTransaction(signature);
-      const mintAddress = new PublicKey(PublicKey.default.toBytes()); // placeholder
-      dispatch({ type: "MINT", seed, mintAddress: mintAddress.toBase58() });
-      spawnFloat(`🎨 Minted P${state.prestige} token! TX: ${signature.slice(0, 8)}...`, ACCENT);
-    } catch (err: any) {
-      console.error("Mint tx failed:", err);
-      spawnFloat(err?.message?.includes("UserRejected") ? "🚫 Transaction cancelled" : "❌ Mint failed", "#ef4444");
-    }
-  }, [state.prestige, state.mintCounts, state.xnt, walletPubkey, isDemo]);
-
-  // ── Burn ──
-  const handleBurn = useCallback((prestigeLvl: number, seed: number) => {
-    dispatch({ type: "BURN_TOKEN", prestigeLvl, seed });
-  }, []);
-
-  const handleBurnComplete = useCallback((prestigeLvl: number, seed: number, ticker: string) => {
-    dispatch({ type: "BURN_TOKEN", prestigeLvl, seed });
-  }, []);
-
-  const handleBurnClose = useCallback(() => {}, []);
-
-  const handleBurnOne = useCallback(async (prestigeLvl: number, seed: number, originX?: number, originY?: number) => {
-    if (isDemo) {
-      dispatch({ type: "BURN_TOKEN", prestigeLvl, seed });
-      return;
-    }
-    dispatch({ type: "BURN_TOKEN", prestigeLvl, seed });
-  }, [isDemo]);
-
-  // ── Forge ──
-  const handleForge = useCallback(() => {
-    const counts: Record<number, number> = {};
-    for (const t of state.tokens) counts[t.prestige] = (counts[t.prestige] || 0) + 1;
-    const forgeable = Object.entries(counts).find(([, c]) => c >= 3);
-    if (!forgeable) { spawnFloat("❌ Need 3 tokens of the same level to forge", "#ef4444"); return; }
-    dispatch({ type: "FORGE" });
-    spawnFloat(`🔨 Forged! 3× P${forgeable[0]} → P${Number(forgeable[0]) + 1}`, "#ffaa00");
-  }, [state.tokens]);
-
-  // ── Add metadata ──
-  const handleAddMetadata = useCallback(async (lvl: number, seed: number, mintAddress: string) => {
-    // No-op for now
-  }, []);
-
-  // ── LP ──
-  const handleProvideLp = useCallback((prestige: number) => {
-    dispatch({ type: "PROVIDE_LP", prestige });
-    spawnFloat(`🌊 LP provided for P${prestige}!`, '#44ddff');
-  }, []);
-
-  // ── XEN Token Locking ──
-  const handleLockToken = useCallback((seed: number, termDays: number) => {
-    const token = state.tokens.find(t => t.seed === seed);
-    if (!token) { spawnFloat("❌ Token not found", "#ef4444"); return; }
-    if (token.lockedUntil) { spawnFloat("❌ Token already locked", "#ef4444"); return; }
-    if (termDays <= 0) { spawnFloat("❌ Select a lock term", "#ef4444"); return; }
-    dispatch({ type: "LOCK_TOKEN", seed, termDays, now: Date.now() });
-    const globalCount = state.globalMintCounts[token.prestige] || 1;
-    const yieldPerDay = getTokenXenYield(token.prestige, token.serial, globalCount, termDays);
-    spawnFloat(`🔒 P${token.prestige} #${token.serial} locked ${termDays}d → +${yieldPerDay} XNT/day`, "#ffaa00");
-  }, [state.tokens, state.globalMintCounts]);
-
-  const handleUnlockToken = useCallback((seed: number) => {
-    const token = state.tokens.find(t => t.seed === seed);
-    if (!token) { spawnFloat("❌ Token not found", "#ef4444"); return; }
-    if (!token.lockedUntil) { spawnFloat("❌ Token not locked", "#ef4444"); return; }
-    if (Date.now() < token.lockedUntil) { spawnFloat("⏳ Token still locked", "#ffaa00"); return; }
-    dispatch({ type: "UNLOCK_TOKEN", seed, now: Date.now() });
-    spawnFloat(`🔓 Unlocked! Yield claimed`, "#44ff88");
-  }, [state.tokens]);
-
-  const handleClaimAllYield = useCallback(() => {
-    dispatch({ type: "CLAIM_YIELD", now: Date.now() });
-    spawnFloat(`💰 Claimed all unlocked yield!`, "#44ff88");
-  }, []);
-
-  // ── Marketplace ──
-  const onListNft = useCallback(async (nft: TokenEntry, price: number) => {
-    const engine = getMarketplaceEngine();
-    try {
-      await engine.list({
-        prestige: nft.prestige,
-        seed: nft.seed,
-        price,
-        seller: walletAddress ?? '',
-        mint: nft.mintAddress ?? '',
-      });
-      spawnFloat(`📦 Listed P${nft.prestige} for ${price} XNT`, "#44ddff");
-      const listings = await engine.getActiveListings();
-      setMarketplaceListings(listings);
-    } catch (err) {
-      spawnFloat("❌ Failed to list", "#ef4444");
-    }
-  }, []);
-
-  const onBuyNft = useCallback(async (listing: MarketplaceListing) => {
-    if (state.xnt < listing.price) { spawnFloat("❌ Insufficient XNT", "#ef4444"); return; }
-    const engine = getMarketplaceEngine();
-    try {
-      await engine.buy({
-        listingId: listing.id,
-        price: listing.price,
-        seller: listing.seller,
-        buyer: walletAddress ?? '',
-      });
-      dispatch({ type: "BUY_TOKEN", prestige: listing.prestige, seed: listing.seed, price: listing.price });
-      spawnFloat(`🛒 Bought P${listing.prestige} for ${listing.price} XNT`, "#44ddff");
-      const listings = await engine.getActiveListings();
-      setMarketplaceListings(listings);
-    } catch (err) {
-      spawnFloat("❌ Failed to buy", "#ef4444");
-    }
-  }, [state.xnt]);
-
-  const onCancelListing = useCallback(async (listingId: string) => {
-    const engine = getMarketplaceEngine();
-    try {
-      await engine.cancel(listingId);
-      spawnFloat("🗑️ Listing cancelled", "#ffaa00");
-      const listings = await engine.getActiveListings();
-      setMarketplaceListings(listings);
-    } catch (err) {
-      spawnFloat("❌ Failed to cancel", "#ef4444");
-    }
-  }, []);
+  // ── Fetch user's SPL token balances ──
+  useEffect(() => {
+    if (!walletPubkey || !connected) return;
+    const fetchTokens = async () => {
+      const tokens: { prestige: number; mint: string; balance: number }[] = [];
+      // Check first 10 prestige levels for token balances
+      for (let p = 1; p <= 10; p++) {
+        try {
+          const mintPda = getPrestigeMintPDA(p);
+          const ata = getAssociatedTokenAddress(mintPda, walletPubkey);
+          const info = await connection.getTokenAccountBalance(ata);
+          if (info.value.uiAmount && info.value.uiAmount > 0) {
+            tokens.push({ prestige: p, mint: mintPda.toBase58(), balance: info.value.uiAmount });
+          }
+        } catch {}
+      }
+      setUserTokens(tokens);
+    };
+    fetchTokens();
+    const interval = setInterval(fetchTokens, 10000);
+    return () => clearInterval(interval);
+  }, [walletPubkey, connected, connection]);
 
   // ── Derived values ──
   const nextMilestone = getNextMilestone(state.prestige);
+  const burnCost = state.prestige < MAX_PRESTIGE ? getBurnCost(state.prestige) : 0;
+  const supplyRemaining = getSupplyRemaining(state.supplyMinted, state.prestige);
+  const supplyPercent = getSupplyPercent(state.supplyMinted, state.prestige);
+  const tierExhausted = isTierExhausted(state.supplyMinted, state.prestige);
+  const prestigeLabel = getPrestigeLabel(state.prestige);
+  const prestigeColor = getPrestigeColor(state.prestige);
 
   // ── Layout ──
   return (
@@ -401,7 +275,7 @@ export default function DemoApp() {
         </div>
       )}
 
-      {/* ── LANDING SCREEN — demo or pay 0.01 XN ── */}
+      {/* ── LANDING SCREEN ── */}
       {!hasStarted && !isGameComplete && (
         <div className="flex-1 flex items-center justify-center relative z-10 px-4">
           <div className="text-center max-w-md space-y-6">
@@ -413,30 +287,45 @@ export default function DemoApp() {
                   boxShadow: "0 0 60px #a78bfa33",
                 }}
               >
-              <img src="/nex-logo.jpg" alt="XNT" className="h-12 w-auto rounded-lg" />
+              <img src="/nex-logo.jpg" alt="NEX" className="h-12 w-auto rounded-lg" />
               </div>
             </div>
 
-            <h1 className="text-3xl font-bold" style={{ color: '#fff' }}>XNT Protocol</h1>
+            <h1 className="text-3xl font-bold" style={{ color: '#fff' }}>NEX Protocol V2</h1>
             <p className="text-sm" style={{ color: "#888899" }}>
-              The deflationary inverse of XEN. Tap. Prestige. Mint. Lock. Earn.
-              Ascend through all 100 prestige tiers on X1.
+              Pure tap/burn/prestige on X1 Mainnet. 1 tap = 1 token. Burn to ascend.
+              Each prestige mints a unique SPL token to your wallet.
             </p>
 
             <div className="space-y-3 pt-2">
               <div className="flex items-center gap-3 justify-center text-[11px]" style={{ color: "#888899" }}>
-                <span>👆 Tap for XNT</span>
-                <span>🔄 Prestige 100 tiers</span>
-                <span>🎨 Mint tokens</span>
-              </div>
-              <div className="flex items-center gap-3 justify-center text-[11px]" style={{ color: "#888899" }}>
-                <span>🔒 Lock for XEN yield</span>
-                <span>🔥 Burn for tokens</span>
-                <span>🏪 Trade</span>
+                <span>👆 Tap for tokens</span>
+                <span>🔥 Burn to prestige</span>
+                <span>🪙 SPL tokens to wallet</span>
               </div>
             </div>
 
             <div className="pt-4 space-y-3">
+              {/* Connect Wallet — Primary CTA */}
+              {!connected ? (
+                <div className="flex justify-center">
+                  <WalletMultiButton />
+                </div>
+              ) : (
+                <div
+                  className="rounded-xl border p-4 cursor-pointer hover:scale-[1.02] active:scale-[0.98] transition-all"
+                  style={{ background: "#0066ff11", borderColor: "#0066ff44" }}
+                  onClick={handleStartOnChain}
+                >
+                  <p className="text-sm font-medium" style={{ color: BLUE }}>
+                    {txPending ? "⏳ Initializing..." : "🚀 Start On-Chain Game"}
+                  </p>
+                  <p className="text-[10px] mt-1" style={{ color: "#888899cc" }}>
+                    Wallet: {shortAddr} · Each prestige mints an SPL token to your wallet
+                  </p>
+                </div>
+              )}
+
               {/* Demo Mode */}
               <div
                 className="rounded-xl border p-4 cursor-pointer hover:scale-[1.02] active:scale-[0.98] transition-all"
@@ -448,66 +337,6 @@ export default function DemoApp() {
                   No wallet needed. Play through all 100 prestiges for free.
                   Nothing is saved when you exit.
                 </p>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <div className="flex-1 h-px" style={{ background: "rgba(255,255,255,0.06)" }} />
-                <span className="text-[10px]" style={{ color: "#88889966" }}>OR</span>
-                <div className="flex-1 h-px" style={{ background: "rgba(255,255,255,0.06)" }} />
-              </div>
-
-              {/* Wallet / Pay XNT */}
-              <div
-                className="rounded-xl border p-4"
-                style={{ background: "#0c0c1488", borderColor: "#0066ff33" }}
-              >
-                {!walletAddress ? (
-                  <div className="text-center">
-                    <WalletMultiButton
-                      className="!bg-[#0066ff]/10 !border !border-[#0066ff]/20 !rounded-full !text-[10px] !px-4 !py-1.5 !h-auto !text-[#0066ff] hover:!bg-[#0066ff]/20 !transition-all !font-normal !tracking-wide"
-                    />
-                    <p className="text-[10px] mt-2 text-center" style={{ color: "#88889999" }}>
-                      0.01 XN dev fee · 0.01 XN prestige fee → dev · cheap mint gas
-                    </p>
-                  </div>
-                ) : (
-                  <div className="text-center space-y-2">
-                    <p className="text-[9px]" style={{ color: "#888899" }}>
-                      Wallet: {shortAddr}
-                    </p>
-                    {xntNativeBalance !== null && (
-                      <p className="text-[10px]" style={{ color: xntNativeBalance >= 0.01 ? "#4ade80" : "#ffbb33" }}>
-                        {xntNativeBalance.toFixed(4)} XN
-                      </p>
-                    )}
-                    {xntNativeBalance !== null && xntNativeBalance < 0.01 && (
-                      <div
-                        className="text-[10px] px-3 py-1.5 rounded-lg"
-                        style={{ background: "#44220044", border: "1px solid #88550044", color: "#ffbb33" }}
-                      >
-                        ⚠️ 0 XN in wallet —
-                        <span className="underline ml-1">add XN via bridge</span>
-                      </div>
-                    )}
-                    <div className="flex gap-2 justify-center">
-                      <button
-                        onClick={payXntFee}
-                        disabled={xntFeeLoading}
-                        className="text-xs px-5 py-2 rounded-full transition-all border"
-                        style={{
-                          background: xntFeeLoading ? "#55440033" : "#a78bfa22",
-                          borderColor: xntFeeLoading ? "#88770033" : "#a78bfa44",
-                          color: xntFeeLoading ? "#888" : ACCENT,
-                        }}
-                      >
-                        {xntFeeLoading ? "⏳ Sending 0.01 XN..." : "👑 Pay 0.01 XN & Unlock"}
-                      </button>
-                    </div>
-                    <p className="text-[10px]" style={{ color: "#88889999" }}>
-                      0.01 XN dev fee · 0.01 XN prestige fee → dev
-                    </p>
-                  </div>
-                )}
               </div>
             </div>
           </div>
@@ -525,23 +354,26 @@ export default function DemoApp() {
                 boxShadow: "0 0 80px #fbbf2444",
               }}
             >
-              <span className="text-5xl">⭐</span>
+              <span className="text-5xl">🏆</span>
             </div>
-            <h2 className="text-2xl font-bold" style={{ color: GOLD }}>You completed the game!</h2>
+            <h2 className="text-2xl font-bold" style={{ color: GOLD }}>LEGENDARY — P100!</h2>
             <p className="text-sm" style={{ color: "#888899" }}>
-              All 100 prestige tiers conquered. Your XNT legacy is sealed.
+              You conquered all 100 prestige tiers. P100 — the ultimate SPL token.
             </p>
+            <div className="text-xs" style={{ color: "#888899" }}>
+              <p>Total tokens minted: {state.totalMinted.toLocaleString()}</p>
+              <p>Total tokens burned: {state.totalBurned.toLocaleString()}</p>
+            </div>
             <button
               onClick={handleResetGame}
-              disabled={xntFeeLoading}
               className="text-xs px-6 py-3 rounded-full transition-all border"
               style={{
                 background: "#fbbf2411",
                 borderColor: "#fbbf2433",
-                color: xntFeeLoading ? "#666" : GOLD,
+                color: GOLD,
               }}
             >
-              {xntFeeLoading ? "⏳ Processing..." : "🔄 Restart Game (send 0.01 XN)"}
+              🔄 Restart Game
             </button>
           </div>
         </div>
@@ -552,62 +384,75 @@ export default function DemoApp() {
         <>
           <ParticleBg />
 
-          {/* View mode toggle */}
-          <div className="fixed top-3 right-3 z-50">
-            <button
-              onClick={toggleViewMode}
-              className="text-[9px] px-2 py-1 rounded-full bg-white/5 border border-white/10 text-gray-500 hover:text-gray-300 hover:border-white/20 transition-all"
-              title={`Switch to ${viewMode === 'mobile' ? 'desktop' : 'mobile'} view`}
-            >
-              {viewMode === "mobile" ? "🖥 Desktop" : "📱 Mobile"}
-            </button>
+          {/* Wallet bar */}
+          <div className="fixed top-3 left-3 right-3 z-50 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              {connected && (
+                <div className="text-[10px] font-mono px-2 py-1 rounded-full bg-white/5 border border-white/10 text-white/50">
+                  {shortAddr}
+                </div>
+              )}
+              {isDemo && (
+                <div className="text-[10px] font-mono px-2 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400">
+                  DEMO
+                </div>
+              )}
+              {connected && !isDemo && (
+                <div className="text-[10px] font-mono px-2 py-1 rounded-full bg-green-500/10 border border-green-500/20 text-green-400">
+                  ON-CHAIN
+                </div>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              {userTokens.length > 0 && (
+                <div className="text-[10px] font-mono px-2 py-1 rounded-full bg-[#0066ff]/10 border border-[#0066ff]/20 text-[#0066ff]">
+                  🪙 {userTokens.length} tokens
+                </div>
+              )}
+              <button
+                onClick={toggleViewMode}
+                className="text-[9px] px-2 py-1 rounded-full bg-white/5 border border-white/10 text-gray-500 hover:text-gray-300 hover:border-white/20 transition-all"
+              >
+                {viewMode === "mobile" ? "🖥 Desktop" : "📱 Mobile"}
+              </button>
+            </div>
           </div>
 
           {viewMode === "mobile" ? (
             <MobileLayout
               state={state} tab={tab} setTab={setTab}
               walletAddress={walletAddress} walletConnecting={walletConnecting}
-              shortAddr={shortAddr} xntFeeLoading={xntFeeLoading} isDemo={isDemo}
-              xntNativeBalance={xntNativeBalance}
-              payXntFee={payXntFee} walletDisconnect={walletDisconnect}
-              handleTap={handleTap} handlePrestige={handlePrestige} handleMint={handleMint}
-              handleBurn={handleBurn} handleBurnOne={handleBurnOne} handleForge={handleForge}
-              handleAddMetadata={handleAddMetadata}
-              nexMult={0} prestigeCost={0}
-              nextMilestone={nextMilestone} tapsPerPrestige={0}
+              shortAddr={shortAddr} isDemo={isDemo}
+              walletDisconnect={walletDisconnect}
+              handleTap={handleTap} handlePrestige={handlePrestige}
               orbRef={orbRef} effectsRef={effectsRef} orbFlash={orbFlash}
               bottomTabs={BOTTOM_TABS}
-              marketplaceListings={marketplaceListings}
-              onListNft={onListNft}
-              onBuyNft={onBuyNft}
-              onCancelListing={onCancelListing}
-              handleProvideLp={handleProvideLp}
-              handleLockToken={handleLockToken}
-              handleUnlockToken={handleUnlockToken}
-              handleClaimAllYield={handleClaimAllYield}
+              burnCost={burnCost}
+              supplyRemaining={supplyRemaining}
+              supplyPercent={supplyPercent}
+              tierExhausted={tierExhausted}
+              prestigeLabel={prestigeLabel}
+              prestigeColor={prestigeColor}
+              txPending={txPending}
+              userTokens={userTokens}
             />
           ) : (
             <DesktopLayout
               state={state} tab={tab} setTab={setTab}
               walletAddress={walletAddress} walletConnecting={walletConnecting}
-              shortAddr={shortAddr} xntFeeLoading={xntFeeLoading} isDemo={isDemo}
-              xntNativeBalance={xntNativeBalance}
-              payXntFee={payXntFee} walletDisconnect={walletDisconnect}
-              handleTap={handleTap} handlePrestige={handlePrestige} handleMint={handleMint}
-              handleBurn={handleBurn} handleBurnOne={handleBurnOne} handleForge={handleForge}
-              handleAddMetadata={handleAddMetadata}
-              nexMult={0} prestigeCost={0}
-              nextMilestone={nextMilestone} tapsPerPrestige={0}
+              shortAddr={shortAddr} isDemo={isDemo}
+              walletDisconnect={walletDisconnect}
+              handleTap={handleTap} handlePrestige={handlePrestige}
               orbRef={orbRef} effectsRef={effectsRef} orbFlash={orbFlash}
               bottomTabs={BOTTOM_TABS}
-              marketplaceListings={marketplaceListings}
-              onListNft={onListNft}
-              onBuyNft={onBuyNft}
-              onCancelListing={onCancelListing}
-              handleProvideLp={handleProvideLp}
-              handleLockToken={handleLockToken}
-              handleUnlockToken={handleUnlockToken}
-              handleClaimAllYield={handleClaimAllYield}
+              burnCost={burnCost}
+              supplyRemaining={supplyRemaining}
+              supplyPercent={supplyPercent}
+              tierExhausted={tierExhausted}
+              prestigeLabel={prestigeLabel}
+              prestigeColor={prestigeColor}
+              txPending={txPending}
+              userTokens={userTokens}
             />
           )}
         </>
@@ -616,17 +461,13 @@ export default function DemoApp() {
       <footer className="w-full border-t border-white/5 mt-8 pt-6 pb-8 px-4">
         <div className="max-w-3xl mx-auto text-center">
           <p className="text-[10px] leading-relaxed text-white/30">
-            <strong className="text-white/40">⚠ DISCLAIMER:</strong> XNT Protocol is an experimental on-chain game deployed on X1 Blockchain. 
-            This is not a financial product, investment contract, or security. XNT tokens have no inherent monetary value 
+            <strong className="text-white/40">⚠ DISCLAIMER:</strong> NEX Protocol V2 is an experimental on-chain game. 
+            This is not a financial product, investment contract, or security. NEX tokens have no inherent monetary value 
             and are purely a game mechanic. There is no promise, guarantee, or expectation of profit. The protocol is 
-            provided "as is" without any warranty. Participation is entirely at your own risk. XNT used for game fees 
-            (0.01 XN entry, 0.01 XN prestige) is non-refundable. Smart contract risk, blockchain network risk, and 
+            provided "as is" without any warranty. Participation is entirely at your own risk. Smart contract risk, blockchain network risk, and 
             potential total loss of funds apply. By using this site you agree to hold the developers, deployers, and 
             all associated parties harmless from any losses, damages, or claims. Do not play if this is illegal in 
             your jurisdiction. Not available to US persons or residents where prohibited.
-          </p>
-          <p className="text-[10px] text-white/20 mt-2">
-            Dev Wallet: <code className="text-[#4488ff]/40">BQLB3NPHGRfibY23qTDbEYBuhZu2KsdiD3pbxuu8Fpxh</code>
           </p>
         </div>
       </footer>
